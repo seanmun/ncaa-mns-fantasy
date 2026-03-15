@@ -69,12 +69,20 @@ export default function Landing() {
               All Games
             </a>
           </div>
-          <Link
-            to="/sign-in"
-            className="rounded-lg border border-bg-border bg-bg-card px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-bg-card-hover"
-          >
-            Sign In
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/sign-up"
+              className="rounded-lg bg-neon-green px-4 py-2 text-sm font-semibold text-gray-900 transition-shadow hover:shadow-[0_0_15px_rgba(0,255,135,0.3)]"
+            >
+              Sign Up
+            </Link>
+            <Link
+              to="/sign-in"
+              className="rounded-lg border border-bg-border bg-bg-card px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-bg-card-hover"
+            >
+              Sign In
+            </Link>
+          </div>
         </div>
       </header>
 

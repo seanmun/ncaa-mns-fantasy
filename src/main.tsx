@@ -21,7 +21,13 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} allowedRedirectOrigins={ALLOWED_REDIRECT_ORIGINS}>
+    <ClerkProvider
+      publishableKey={CLERK_PUBLISHABLE_KEY}
+      allowedRedirectOrigins={ALLOWED_REDIRECT_ORIGINS}
+      isSatellite
+      domain="mnsfantasy.com"
+      signInUrl="https://mnsfantasy.com/sign-in"
+    >
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <App />
