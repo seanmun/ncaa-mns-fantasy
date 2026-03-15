@@ -44,7 +44,7 @@ interface StatsRow {
 }
 
 interface SyncStatus {
-  lastSyncAt: string | null;
+  lastUpdated: string | null;
 }
 
 interface LeagueOverview {
@@ -56,8 +56,10 @@ interface LeagueOverview {
 }
 
 interface TeamInfo {
-  team_name: string;
-  eliminated: boolean;
+  team: {
+    name: string;
+    isEliminated: boolean;
+  };
 }
 
 const PLAYER_COLUMNS = [
@@ -271,12 +273,9 @@ export default function AdminPanel() {
     queryFn: () => apiFetch('/api/stats/status'),
   });
 
-  const { data: players } = useQuery<{ team_name: string; eliminated: boolean }[]>({
+  const { data: players } = useQuery<TeamInfo[]>({
     queryKey: ['players-teams'],
-    queryFn: async () => {
-      const data = await apiFetch('/api/players');
-      return data;
-    },
+    queryFn: () => apiFetch('/api/players'),
   });
 
   const { data: leagues } = useQuery<LeagueOverview[]>({
@@ -289,8 +288,8 @@ export default function AdminPanel() {
     ? [
         ...new Set(
           players
-            .filter((p: TeamInfo) => !p.eliminated)
-            .map((p: TeamInfo) => p.team_name)
+            .filter((p) => !p.team.isEliminated)
+            .map((p) => p.team.name)
         ),
       ].sort()
     : [];
@@ -524,15 +523,15 @@ export default function AdminPanel() {
               <RefreshCw className="h-4 w-4" />
               Sync Stats from SportsRadar
             </Button>
-            {syncStatus?.lastSyncAt && (
+            {syncStatus?.lastUpdated && (
               <p className="text-sm text-text-muted">
                 Last synced:{' '}
                 <span className="text-text-secondary">
-                  {new Date(syncStatus.lastSyncAt).toLocaleString()}
+                  {new Date(syncStatus.lastUpdated).toLocaleString()}
                 </span>
               </p>
             )}
-            {!syncStatus?.lastSyncAt && (
+            {!syncStatus?.lastUpdated && (
               <p className="text-sm text-text-muted">
                 No sync data available yet
               </p>

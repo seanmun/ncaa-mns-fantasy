@@ -65,7 +65,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       query = query.where(inArray(ncaaTeams.seed, seeds));
     }
 
-    const result = await query;
+    const rows = await query;
+
+    // Nest team fields into a `team` object to match PlayerWithTeam type
+    const result = rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      jersey: row.jersey,
+      position: row.position,
+      avgPts: row.avgPts,
+      avgReb: row.avgReb,
+      avgAst: row.avgAst,
+      isActive: row.isActive,
+      teamId: row.teamId,
+      team: {
+        id: row.teamId,
+        name: row.teamName,
+        shortName: row.teamShortName,
+        seed: row.seed,
+        region: row.region,
+        isEliminated: row.isEliminated,
+        logoUrl: row.logoUrl,
+      },
+    }));
 
     return res.status(200).json({ data: result });
   } catch (err) {

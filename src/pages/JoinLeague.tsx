@@ -47,13 +47,7 @@ export default function JoinLeague() {
     isError,
   } = useQuery<LeaguePreview>({
     queryKey: ['league-preview', inviteCode],
-    queryFn: async () => {
-      const res = await fetch(`/api/leagues/join/${inviteCode}`);
-      if (!res.ok) {
-        throw new Error('Invalid invite code');
-      }
-      return res.json();
-    },
+    queryFn: () => apiFetch(`/api/leagues/join/${inviteCode}`),
     enabled: !!inviteCode,
     retry: false,
   });

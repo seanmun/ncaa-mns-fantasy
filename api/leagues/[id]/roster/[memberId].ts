@@ -40,7 +40,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Verify the target member belongs to this league
-    const [targetMember] = await db
+    // Support lookup by memberId (UUID) or userId (Clerk ID string)
+    let [targetMember] = await db
       .select()
       .from(leagueMembers)
       .where(
@@ -50,6 +51,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       )
       .limit(1);
+
+    // Fallback: try looking up by userId (for PickRoster which passes Clerk user.id)
+    if (!targetMember) {
+      [targetMember] = await db
+        .select()
+        .from(leagueMembers)
+        .where(
+          and(
+            eq(leagueMembers.userId, memberId),
+            eq(leagueMembers.leagueId, leagueId)
+          )
+        )
+        .limit(1);
+    }
 
     if (!targetMember) {
       return res.status(404).json({ error: 'Member not found in this league' });

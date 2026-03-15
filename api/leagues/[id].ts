@@ -50,9 +50,11 @@ async function handleGet(req: VercelRequest, res: VercelResponse, leagueId: stri
       return res.status(404).json({ error: 'League not found' });
     }
 
+    // Authenticate the current user (needed for membership check + roster locked status)
+    const userId = await verifyAuth(req);
+
     // Private leagues require membership
     if (leagueData.visibility === 'private') {
-      const userId = await verifyAuth(req);
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
@@ -73,7 +75,23 @@ async function handleGet(req: VercelRequest, res: VercelResponse, leagueId: stri
       }
     }
 
-    return res.status(200).json({ data: leagueData });
+    // Check if the current user's roster is locked for this league
+    let currentMemberRosterLocked = false;
+    if (userId) {
+      const [currentMember] = await db
+        .select({ rosterLocked: leagueMembers.rosterLocked })
+        .from(leagueMembers)
+        .where(
+          and(
+            eq(leagueMembers.leagueId, leagueId),
+            eq(leagueMembers.userId, userId)
+          )
+        )
+        .limit(1);
+      currentMemberRosterLocked = currentMember?.rosterLocked ?? false;
+    }
+
+    return res.status(200).json({ data: { ...leagueData, currentMemberRosterLocked } });
   } catch (err) {
     console.error('Error fetching league:', err);
     return res.status(500).json({ error: 'Failed to fetch league' });

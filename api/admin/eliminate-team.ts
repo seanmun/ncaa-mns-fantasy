@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         isEliminated: true,
         eliminatedInRound: round,
       })
-      .where(eq(ncaaTeams.id, teamId))
+      .where(eq(ncaaTeams.id, team.id))
       .returning();
 
     return res.status(200).json({
