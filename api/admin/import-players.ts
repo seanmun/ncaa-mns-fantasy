@@ -5,12 +5,20 @@ import { db, schema } from '../_db.js';
 
 const { ncaaTeams, players } = schema;
 
+interface TourneyTeam {
+  id: string;
+  name: string;
+  alias: string;
+  seed: number;
+  region: string;
+}
+
 /**
  * POST /api/admin/import-players
  *
  * Two-step SportsRadar import (admin-only):
- *   step=teams   → fetches hierarchy, upserts all teams (1 API call, fast)
- *   step=players  → fetches season stats per team, upserts players (batched)
+ *   step=teams   → scrapes tournament schedule for 68 teams with seeds + regions
+ *   step=players → fetches season stats per team, upserts players (batched)
  *
  * Query params:
  *   step       — "teams" | "players" (default: "teams")
@@ -53,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Step 1: Import all teams from hierarchy                            */
+/*  Step 1: Import 68 tournament teams from bracket schedule            */
 /* ------------------------------------------------------------------ */
 
 async function importTeams(
@@ -61,67 +69,112 @@ async function importTeams(
   baseUrl: string,
   apiKey: string
 ) {
-  const hierarchyRes = await fetch(
-    `${baseUrl}/league/hierarchy.json?api_key=${apiKey}`
-  );
+  const tourneyYear = process.env.TOURNAMENT_YEAR || '2026';
 
-  if (!hierarchyRes.ok) {
-    return res.status(502).json({
-      error: `SportsRadar hierarchy API returned ${hierarchyRes.status}`,
+  // Fetch game schedules for tournament week to collect all 68 teams
+  // First Four + Round of 64 covers all teams
+  const dates = [
+    `${tourneyYear}/03/17`,
+    `${tourneyYear}/03/18`,
+    `${tourneyYear}/03/19`,
+    `${tourneyYear}/03/20`,
+    `${tourneyYear}/03/21`,
+  ];
+
+  const teams = new Map<string, TourneyTeam>();
+
+  for (const date of dates) {
+    // Respect rate limit
+    if (teams.size > 0) {
+      await new Promise((r) => setTimeout(r, 1100));
+    }
+
+    const schedRes = await fetch(
+      `${baseUrl}/games/${date}/schedule.json?api_key=${apiKey}`
+    );
+
+    if (!schedRes.ok) {
+      console.error(`Schedule API error for ${date}: ${schedRes.status}`);
+      continue;
+    }
+
+    const data = await schedRes.json();
+
+    for (const game of data.games || []) {
+      const title: string = game.title || '';
+      // Extract region from title like "South Regional - First Round - Game 3"
+      const regionMatch = title.match(/^(\w+)\s+Regional/);
+      const region = regionMatch ? regionMatch[1] : 'TBD';
+
+      for (const side of ['home', 'away'] as const) {
+        const t = game[side];
+        if (!t?.id || teams.has(t.id)) continue;
+        // Skip the TBD placeholder team
+        if (t.alias === 'TBD') continue;
+
+        teams.set(t.id, {
+          id: t.id,
+          name: `${t.market || ''} ${t.name || ''}`.trim(),
+          alias: t.alias || '',
+          seed: t.seed ?? 0,
+          region,
+        });
+      }
+    }
+  }
+
+  if (teams.size === 0) {
+    return res.status(200).json({
+      data: {
+        message: 'No tournament games found. Bracket may not be announced yet.',
+        teamsInserted: 0,
+        teamsUpdated: 0,
+        totalProcessed: 0,
+      },
     });
   }
 
-  const data = await hierarchyRes.json();
+  // First Four teams: assign region based on their Round of 64 matchup seed
+  // For now, First Four teams keep region 'TBD' — they'll get the real region
+  // once their Round of 64 game appears in the schedule
+
   let teamsInserted = 0;
   let teamsUpdated = 0;
 
-  // Only import NCAA Division I teams (the tournament field comes from D1)
-  const d1Division = (data.divisions || []).find(
-    (d: { alias?: string; name?: string }) =>
-      d.alias === 'D1' || d.name === 'NCAA Division I'
-  );
+  for (const team of teams.values()) {
+    const [existing] = await db
+      .select({ id: ncaaTeams.id })
+      .from(ncaaTeams)
+      .where(eq(ncaaTeams.sportRadarTeamId, team.id))
+      .limit(1);
 
-  if (!d1Division) {
-    return res.status(502).json({ error: 'D1 division not found in hierarchy' });
-  }
-
-  // Walk D1 conferences → teams
-  for (const conference of d1Division.conferences || []) {
-    for (const team of conference.teams || []) {
-        const srId = team.id;
-        const name = `${team.market} ${team.name}`; // e.g. "Duke Blue Devils"
-        const shortName = team.alias || team.market || '';
-
-        // Check if team already exists by SportsRadar ID
-        const [existing] = await db
-          .select({ id: ncaaTeams.id })
-          .from(ncaaTeams)
-          .where(eq(ncaaTeams.sportRadarTeamId, srId))
-          .limit(1);
-
-        if (existing) {
-          await db
-            .update(ncaaTeams)
-            .set({ name, shortName })
-            .where(eq(ncaaTeams.id, existing.id));
-          teamsUpdated++;
-        } else {
-          await db.insert(ncaaTeams).values({
-            name,
-            shortName,
-            seed: 0,        // Will be set when tournament bracket is announced
-            region: 'TBD',  // Will be set when tournament bracket is announced
-            sportRadarTeamId: srId,
-            isEliminated: false,
-          });
-          teamsInserted++;
-        }
-      }
+    if (existing) {
+      await db
+        .update(ncaaTeams)
+        .set({
+          name: team.name,
+          shortName: team.alias,
+          seed: team.seed,
+          region: team.region,
+        })
+        .where(eq(ncaaTeams.id, existing.id));
+      teamsUpdated++;
+    } else {
+      await db.insert(ncaaTeams).values({
+        name: team.name,
+        shortName: team.alias,
+        seed: team.seed,
+        region: team.region,
+        sportRadarTeamId: team.id,
+        isEliminated: false,
+      });
+      teamsInserted++;
     }
+  }
 
   return res.status(200).json({
     data: {
-      message: 'Teams imported from SportsRadar hierarchy',
+      message: `Tournament teams imported (${teams.size} teams from bracket)`,
       teamsInserted,
       teamsUpdated,
       totalProcessed: teamsInserted + teamsUpdated,
