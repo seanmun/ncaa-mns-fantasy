@@ -58,8 +58,8 @@ export default function Landing() {
       <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-bg-secondary/80 backdrop-blur-sm border-b border-bg-border">
         <div className="max-w-7xl mx-auto h-full px-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="font-display text-2xl text-neon-green tracking-wide">
-              MNSfantasy
+            <span className="font-display text-2xl tracking-wide">
+              <span className="text-white">MNS</span><span className="text-neon-green">fantasy</span>
             </span>
             <a
               href={getPlatformUrl()}
