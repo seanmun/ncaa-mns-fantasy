@@ -1,16 +1,11 @@
 import { Link } from 'react-router-dom';
-import { UserButton, useUser } from '@clerk/clerk-react';
+import { UserButton } from '@clerk/clerk-react';
 import { ChevronLeft, Home, Shield } from 'lucide-react';
 import { getPlatformUrl } from '@/lib/utils';
-
-const ADMIN_USER_IDS = (import.meta.env.VITE_ADMIN_USER_IDS || '')
-  .split(',')
-  .map((id: string) => id.trim())
-  .filter(Boolean);
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 
 export default function Header() {
-  const { user } = useUser();
-  const isAdmin = user ? ADMIN_USER_IDS.includes(user.id) : false;
+  const isAdmin = useAdminCheck();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-bg-secondary border-b border-bg-border">

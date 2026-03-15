@@ -1,15 +1,9 @@
 import { NavLink } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
 import { Home, Trophy, User, Shield } from 'lucide-react';
-
-const ADMIN_USER_IDS = (import.meta.env.VITE_ADMIN_USER_IDS || '')
-  .split(',')
-  .map((id: string) => id.trim())
-  .filter(Boolean);
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 
 export default function BottomNav() {
-  const { user } = useUser();
-  const isAdmin = user ? ADMIN_USER_IDS.includes(user.id) : false;
+  const isAdmin = useAdminCheck();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 h-[60px] bg-bg-secondary border-t border-bg-border md:hidden">
