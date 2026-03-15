@@ -9,6 +9,7 @@ import 'react-loading-skeleton/dist/skeleton.css';
 import { SEED_TIERS } from '@/types';
 import type { PlayerWithStats } from '@/types';
 import { cn, formatScore } from '@/lib/utils';
+import BracketView from '@/components/bracket/BracketView';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -222,10 +223,14 @@ export default function MemberRoster() {
 
         {/* ========== Bracket View ========== */}
         {activeTab === 'bracket' && (
-          <div className="flex items-center justify-center rounded-xl border border-bg-border bg-bg-card p-16">
-            <p className="text-sm text-text-muted">
-              Bracket view coming soon
-            </p>
+          <div className="rounded-xl border border-bg-border bg-bg-card p-4">
+            {roster ? (
+              <BracketView players={roster.players} />
+            ) : (
+              <div className="flex items-center justify-center py-16">
+                <p className="text-sm text-text-muted">No roster data available.</p>
+              </div>
+            )}
           </div>
         )}
       </div>

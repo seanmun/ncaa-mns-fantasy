@@ -21,7 +21,9 @@ export function useApi() {
         throw new Error(error.message || `API error: ${res.status}`);
       }
 
-      return res.json();
+      const json = await res.json();
+      // Unwrap { data: ... } envelope if present
+      return json.data !== undefined ? json.data : json;
     },
     [getToken]
   );

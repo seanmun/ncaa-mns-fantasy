@@ -30,6 +30,7 @@ const createLeagueSchema = z.object({
     .default(0),
   buyInCurrency: z.enum(['USD', 'ETH', 'BTC']).default('USD'),
   cryptoWalletAddress: z.string().optional(),
+  cryptoWalletType: z.enum(['eth', 'btc']).optional(),
   maxMembers: z.coerce
     .number()
     .min(2, 'Must allow at least 2 members')
@@ -75,9 +76,19 @@ export default function CreateLeague() {
   const onSubmit = async (data: CreateLeagueFormData) => {
     setIsSubmitting(true);
     try {
+      // Set cryptoWalletType based on currency selection
+      const payload = {
+        ...data,
+        cryptoWalletType:
+          data.buyInCurrency === 'ETH'
+            ? 'eth'
+            : data.buyInCurrency === 'BTC'
+              ? 'btc'
+              : undefined,
+      };
       const league = await apiFetch('/api/leagues', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       toast.success('League created! Share the invite link with your friends.');
       navigate(`/leagues/${league.id}`);

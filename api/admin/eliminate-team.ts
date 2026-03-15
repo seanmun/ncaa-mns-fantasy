@@ -19,20 +19,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { teamId, round } = req.body || {};
+    const { teamId, teamName, round } = req.body || {};
 
-    if (!teamId || typeof teamId !== 'string') {
-      return res.status(400).json({ error: 'teamId is required' });
-    }
     if (!round || typeof round !== 'string') {
       return res.status(400).json({ error: 'round is required' });
     }
+    if (!teamId && !teamName) {
+      return res.status(400).json({ error: 'teamId or teamName is required' });
+    }
 
-    // Verify team exists
+    // Find team by ID or name
     const [team] = await db
       .select()
       .from(ncaaTeams)
-      .where(eq(ncaaTeams.id, teamId))
+      .where(
+        teamId
+          ? eq(ncaaTeams.id, teamId)
+          : eq(ncaaTeams.name, teamName)
+      )
       .limit(1);
 
     if (!team) {

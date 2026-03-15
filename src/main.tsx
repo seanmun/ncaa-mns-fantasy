@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import App from './App';
-import { CLERK_PUBLISHABLE_KEY } from './lib/clerk';
+import ErrorBoundary from './components/ErrorBoundary';
+import { CLERK_PUBLISHABLE_KEY, ALLOWED_REDIRECT_ORIGINS } from './lib/clerk';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -19,7 +20,8 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+    <ErrorBoundary>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} allowedRedirectOrigins={ALLOWED_REDIRECT_ORIGINS}>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <App />
@@ -37,5 +39,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </BrowserRouter>
       </QueryClientProvider>
     </ClerkProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );

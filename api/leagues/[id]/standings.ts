@@ -56,7 +56,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           sql<number>`COALESCE(SUM(${playerTournamentStats.pts}), 0) + COALESCE(SUM(${playerTournamentStats.reb}), 0) + COALESCE(SUM(${playerTournamentStats.ast}), 0)`.as(
             'total_score'
           ),
-        rosterCount: sql<number>`COUNT(DISTINCT ${rosters.playerId})`.as('roster_count'),
+        playerCount: sql<number>`COUNT(DISTINCT ${rosters.playerId})`.as('player_count'),
+        eliminatedCount:
+          sql<number>`COUNT(DISTINCT CASE WHEN ${ncaaTeams.isEliminated} THEN ${rosters.playerId} END)`.as(
+            'eliminated_count'
+          ),
       })
       .from(leagueMembers)
       .innerJoin(users, eq(users.id, leagueMembers.userId))
@@ -77,13 +81,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sql`total_pts DESC`
       );
 
-    // Add rank
-    const rankedStandings = standings.map((entry, index) => ({
-      rank: index + 1,
-      ...entry,
+    // Map to StandingsEntry shape the frontend expects
+    const result = standings.map((entry, index) => ({
+      memberId: entry.memberId,
+      teamName: entry.teamName,
+      displayName: entry.displayName,
+      playerCount: Number(entry.playerCount),
+      eliminatedCount: Number(entry.eliminatedCount),
+      totalPts: Number(entry.totalPts),
+      totalReb: Number(entry.totalReb),
+      totalAst: Number(entry.totalAst),
+      totalScore: Number(entry.totalScore),
     }));
 
-    return res.status(200).json({ data: rankedStandings });
+    return res.status(200).json(result);
   } catch (err) {
     console.error('Error computing standings:', err);
     return res.status(500).json({ error: 'Failed to compute standings' });

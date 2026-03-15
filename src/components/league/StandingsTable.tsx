@@ -125,7 +125,7 @@ export function StandingsTable({
               <tr
                 key={entry.memberId}
                 onClick={() =>
-                  navigate(`/league/${leagueId}/roster/${entry.memberId}`)
+                  navigate(`/leagues/${leagueId}/roster/${entry.memberId}`)
                 }
                 role="row"
                 tabIndex={0}
@@ -133,7 +133,7 @@ export function StandingsTable({
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     navigate(
-                      `/league/${leagueId}/roster/${entry.memberId}`,
+                      `/leagues/${leagueId}/roster/${entry.memberId}`,
                     );
                   }
                 }}

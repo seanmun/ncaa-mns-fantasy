@@ -36,27 +36,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { csv } = req.body || {};
-    if (!csv || typeof csv !== 'string') {
-      return res.status(400).json({ error: 'CSV string is required in body as "csv"' });
-    }
+    // Accept either { players: [...] } (pre-parsed JSON) or { csv: "..." } (raw CSV string)
+    let rows: PlayerCSVRow[];
 
-    const parsed = Papa.parse<PlayerCSVRow>(csv, {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: (header: string) => header.trim().toLowerCase().replace(/\s+/g, '_'),
-    });
-
-    if (parsed.errors.length > 0) {
-      return res.status(400).json({
-        error: 'CSV parsing errors',
-        details: parsed.errors.slice(0, 5),
+    if (req.body?.players && Array.isArray(req.body.players)) {
+      rows = req.body.players;
+    } else if (req.body?.csv && typeof req.body.csv === 'string') {
+      const parsed = Papa.parse<PlayerCSVRow>(req.body.csv, {
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header: string) => header.trim().toLowerCase().replace(/\s+/g, '_'),
       });
+
+      if (parsed.errors.length > 0) {
+        return res.status(400).json({
+          error: 'CSV parsing errors',
+          details: parsed.errors.slice(0, 5),
+        });
+      }
+      rows = parsed.data;
+    } else {
+      return res.status(400).json({ error: 'Request body must contain "players" array or "csv" string' });
     }
 
-    const rows = parsed.data;
     if (rows.length === 0) {
-      return res.status(400).json({ error: 'CSV contains no data rows' });
+      return res.status(400).json({ error: 'No data rows provided' });
     }
 
     // Track unique teams and players
@@ -167,12 +171,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.status(200).json({
-      data: {
-        message: 'Player pool import completed',
-        teamsUpserted,
-        playersUpserted,
-        totalRowsProcessed: rows.length,
-      },
+      teams: teamsUpserted,
+      players: playersUpserted,
+      totalRowsProcessed: rows.length,
     });
   } catch (err) {
     console.error('Error uploading players:', err);

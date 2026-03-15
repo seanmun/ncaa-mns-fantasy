@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
-import { Users, UserPlus, Trophy } from 'lucide-react';
+import { Users, UserPlus, Trophy, ChevronLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getPlatformUrl } from '@/lib/utils';
 
 const steps = [
   {
@@ -53,6 +54,30 @@ const staggerItem = {
 export default function Landing() {
   return (
     <div className="relative min-h-screen bg-bg-primary overflow-hidden">
+      {/* ---------- Top nav bar ---------- */}
+      <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-bg-secondary/80 backdrop-blur-sm border-b border-bg-border">
+        <div className="max-w-7xl mx-auto h-full px-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="font-display text-2xl text-neon-green tracking-wide">
+              MNSfantasy
+            </span>
+            <a
+              href={getPlatformUrl()}
+              className="flex items-center gap-1 text-text-muted text-xs hover:text-text-secondary transition-colors"
+            >
+              <ChevronLeft className="w-3 h-3" />
+              All Games
+            </a>
+          </div>
+          <Link
+            to="/sign-in"
+            className="rounded-lg border border-bg-border bg-bg-card px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-bg-card-hover"
+          >
+            Sign In
+          </Link>
+        </div>
+      </header>
+
       {/* ---------- Gradient overlay ---------- */}
       <div
         aria-hidden

@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Sun,
   Moon,
@@ -11,8 +13,21 @@ import {
 } from 'lucide-react';
 
 import { useAppStore } from '@/store';
+import { useApi } from '@/hooks/useApi';
 import PageTransition from '@/components/layout/PageTransition';
 import { getPlatformUrl } from '@/lib/utils';
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+interface GamePrefs {
+  prefMorningUpdates: boolean;
+  prefEliminationAlerts: boolean;
+  prefScoreAlerts: boolean;
+  prefRosterReminders: boolean;
+  optedOutOfGame: boolean;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Section wrapper                                                    */
@@ -83,46 +98,71 @@ function ToggleSwitch({
 export default function Settings() {
   const { theme, fontSize, soundsMuted, setTheme, setFontSize, toggleSounds } =
     useAppStore();
+  const { apiFetch } = useApi();
+  const queryClient = useQueryClient();
 
-  // Notification preferences (local state only for now)
-  const [notifPrefs, setNotifPrefs] = useState({
-    morningUpdates: true,
-    eliminationAlerts: true,
-    scoreChangeAlerts: true,
-    rosterLockReminders: true,
-    unsubscribeAll: false,
+  // Fetch notification preferences from API
+  const { data: gamePrefs } = useQuery<GamePrefs>({
+    queryKey: ['game-prefs'],
+    queryFn: () => apiFetch('/api/marketing/game-prefs'),
   });
 
-  const toggleNotifPref = (key: keyof typeof notifPrefs) => {
-    setNotifPrefs((prev) => {
-      // If toggling unsubscribeAll ON, turn everything else off
-      if (key === 'unsubscribeAll' && !prev.unsubscribeAll) {
-        return {
-          morningUpdates: false,
-          eliminationAlerts: false,
-          scoreChangeAlerts: false,
-          rosterLockReminders: false,
-          unsubscribeAll: true,
-        };
-      }
-      // If toggling unsubscribeAll OFF, restore defaults
-      if (key === 'unsubscribeAll' && prev.unsubscribeAll) {
-        return {
-          morningUpdates: true,
-          eliminationAlerts: true,
-          scoreChangeAlerts: true,
-          rosterLockReminders: true,
-          unsubscribeAll: false,
-        };
-      }
-      // Normal toggle — also turn off unsubscribeAll if re-enabling something
-      const newValue = !prev[key];
-      return {
-        ...prev,
-        [key]: newValue,
-        unsubscribeAll: false,
-      };
-    });
+  // Mutation to persist changes
+  const prefsMutation = useMutation({
+    mutationFn: (prefs: GamePrefs) =>
+      apiFetch('/api/marketing/game-prefs', {
+        method: 'PUT',
+        body: JSON.stringify(prefs),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['game-prefs'] });
+    },
+    onError: () => {
+      toast.error('Failed to save notification preferences');
+    },
+  });
+
+  // Derive local display values from server state
+  const prefs: GamePrefs = gamePrefs || {
+    prefMorningUpdates: true,
+    prefEliminationAlerts: true,
+    prefScoreAlerts: true,
+    prefRosterReminders: true,
+    optedOutOfGame: false,
+  };
+
+  const savePrefs = useCallback(
+    (updated: GamePrefs) => {
+      prefsMutation.mutate(updated);
+    },
+    [prefsMutation],
+  );
+
+  const togglePref = (key: keyof Omit<GamePrefs, 'optedOutOfGame'>) => {
+    const updated = { ...prefs, [key]: !prefs[key], optedOutOfGame: false };
+    savePrefs(updated);
+  };
+
+  const toggleUnsubAll = () => {
+    if (prefs.optedOutOfGame) {
+      // Re-enable defaults
+      savePrefs({
+        prefMorningUpdates: true,
+        prefEliminationAlerts: true,
+        prefScoreAlerts: true,
+        prefRosterReminders: true,
+        optedOutOfGame: false,
+      });
+    } else {
+      // Unsub from all
+      savePrefs({
+        prefMorningUpdates: false,
+        prefEliminationAlerts: false,
+        prefScoreAlerts: false,
+        prefRosterReminders: false,
+        optedOutOfGame: true,
+      });
+    }
   };
 
   const platformUrl = getPlatformUrl();
@@ -244,8 +284,8 @@ export default function Settings() {
                 </span>
               </div>
               <ToggleSwitch
-                enabled={notifPrefs.morningUpdates}
-                onToggle={() => toggleNotifPref('morningUpdates')}
+                enabled={prefs.prefMorningUpdates}
+                onToggle={() => togglePref('prefMorningUpdates')}
               />
             </div>
 
@@ -258,8 +298,8 @@ export default function Settings() {
                 </span>
               </div>
               <ToggleSwitch
-                enabled={notifPrefs.eliminationAlerts}
-                onToggle={() => toggleNotifPref('eliminationAlerts')}
+                enabled={prefs.prefEliminationAlerts}
+                onToggle={() => togglePref('prefEliminationAlerts')}
               />
             </div>
 
@@ -272,8 +312,8 @@ export default function Settings() {
                 </span>
               </div>
               <ToggleSwitch
-                enabled={notifPrefs.scoreChangeAlerts}
-                onToggle={() => toggleNotifPref('scoreChangeAlerts')}
+                enabled={prefs.prefScoreAlerts}
+                onToggle={() => togglePref('prefScoreAlerts')}
               />
             </div>
 
@@ -286,8 +326,8 @@ export default function Settings() {
                 </span>
               </div>
               <ToggleSwitch
-                enabled={notifPrefs.rosterLockReminders}
-                onToggle={() => toggleNotifPref('rosterLockReminders')}
+                enabled={prefs.prefRosterReminders}
+                onToggle={() => togglePref('prefRosterReminders')}
               />
             </div>
 
@@ -303,8 +343,8 @@ export default function Settings() {
                 </span>
               </div>
               <ToggleSwitch
-                enabled={notifPrefs.unsubscribeAll}
-                onToggle={() => toggleNotifPref('unsubscribeAll')}
+                enabled={prefs.optedOutOfGame}
+                onToggle={toggleUnsubAll}
                 danger
               />
             </div>

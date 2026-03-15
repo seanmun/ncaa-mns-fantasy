@@ -19,6 +19,13 @@ import AdminPanel from './pages/AdminPanel';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import OnboardingModal from './components/ui/OnboardingModal';
+import { useUserSync } from './hooks/useUserSync';
+
+// Syncs Clerk user → local DB users table on sign-in
+function UserSync() {
+  useUserSync();
+  return null;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return (
@@ -34,8 +41,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <>
-      {/* Onboarding modal fires once for new users */}
+      {/* Sync Clerk user to DB + show onboarding modal for new users */}
       <SignedIn>
+        <UserSync />
         <OnboardingModal />
       </SignedIn>
 

@@ -21,7 +21,7 @@ const {
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 const GAME_SLUG = process.env.GAME_SLUG || 'ncaa-mens-2025';
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://ncaa.mnsfantasy.com';
+const BASE_URL = process.env.VITE_APP_URL || 'https://ncaa.mnsfantasy.com';
 
 // ---------------------------------------------------------------------------
 // Email guard (inlined for serverless — mirrors src/lib/email-guard.ts)
@@ -245,9 +245,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // ------------------------------------------------------------------
       // 6. Send to each member
       // ------------------------------------------------------------------
-      const leagueUrl = `${BASE_URL}/league/${league.id}`;
+      const leagueUrl = `${BASE_URL}/leagues/${league.id}`;
 
       for (const member of members) {
+        // Deduplication: check if we already sent today's morning update
+        const todayKey = todayStart.toISOString().slice(0, 10);
+        const [alreadySent] = await db
+          .select({ id: emailLog.id })
+          .from(emailLog)
+          .where(
+            and(
+              eq(emailLog.leagueId, league.id),
+              eq(emailLog.userId, member.userId),
+              eq(emailLog.emailType, 'morning_update'),
+              gte(emailLog.sentAt, todayStart)
+            )
+          )
+          .limit(1);
+
+        if (alreadySent) continue;
+
         const allowed = await canSendEmail(
           member.userId,
           GAME_SLUG,

@@ -108,15 +108,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
       .orderBy(sql`total_score DESC`);
 
-    return res.status(200).json({
-      data: {
-        member: {
-          id: targetMember.id,
-          teamName: targetMember.teamName,
-          userId: targetMember.userId,
-        },
-        players: rosterPlayers,
+    // Reshape into the format the frontend expects (PlayerWithStats with nested team)
+    const shapedPlayers = rosterPlayers.map((p) => ({
+      id: p.playerId,
+      name: p.playerName,
+      jersey: p.jersey,
+      position: p.position,
+      avgPts: p.avgPts,
+      avgReb: p.avgReb,
+      avgAst: p.avgAst,
+      teamId: p.teamId,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      sportRadarPlayerId: null,
+      team: {
+        id: p.teamId,
+        name: p.teamName,
+        shortName: p.teamShortName,
+        seed: p.seed,
+        region: p.region,
+        isEliminated: p.isEliminated,
+        eliminatedInRound: p.eliminatedInRound,
+        logoUrl: p.logoUrl,
+        sportRadarTeamId: null,
+        createdAt: new Date().toISOString(),
       },
+      tournamentStats: [],
+      totalPts: Number(p.totalPts),
+      totalReb: Number(p.totalReb),
+      totalAst: Number(p.totalAst),
+      totalScore: Number(p.totalScore),
+    }));
+
+    const overallScore = shapedPlayers.reduce((sum, p) => sum + p.totalScore, 0);
+
+    // Get display name from users table
+    const [memberUser] = await db
+      .select({ displayName: schema.users.displayName })
+      .from(schema.users)
+      .where(eq(schema.users.id, targetMember.userId))
+      .limit(1);
+
+    return res.status(200).json({
+      memberId: targetMember.id,
+      teamName: targetMember.teamName,
+      displayName: memberUser?.displayName || 'Unknown',
+      players: shapedPlayers,
+      totalScore: overallScore,
     });
   } catch (err) {
     console.error('Error fetching member roster:', err);

@@ -21,7 +21,7 @@ export function LeagueCard({ league }: LeagueCardProps) {
 
   return (
     <Card
-      onClick={() => navigate(`/league/${league.id}`)}
+      onClick={() => navigate(`/leagues/${league.id}`)}
       className="group hover:shadow-[0_0_20px_rgba(0,255,135,0.12)] transition-shadow duration-200"
     >
       <div className="flex flex-col gap-3">

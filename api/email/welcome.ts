@@ -17,7 +17,7 @@ const {
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 const GAME_SLUG = process.env.GAME_SLUG || 'ncaa-mens-2025';
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://ncaa.mnsfantasy.com';
+const BASE_URL = process.env.VITE_APP_URL || 'https://ncaa.mnsfantasy.com';
 
 // ---------------------------------------------------------------------------
 // Email guard (inlined for serverless — mirrors src/lib/email-guard.ts)
@@ -145,8 +145,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Build the roster URL (pre-lock: pick roster; post-lock: standings)
     const pickRosterUrl = league.isLocked
-      ? `${BASE_URL}/league/${leagueId}`
-      : `${BASE_URL}/league/${leagueId}/roster`;
+      ? `${BASE_URL}/leagues/${leagueId}`
+      : `${BASE_URL}/leagues/${leagueId}/pick`;
 
     // Render and send
     const emailHtml = await render(

@@ -1,16 +1,24 @@
 import { Link } from 'react-router-dom';
-import { UserButton } from '@clerk/clerk-react';
+import { UserButton, useUser } from '@clerk/clerk-react';
 import { ChevronLeft, Home, Shield } from 'lucide-react';
 import { getPlatformUrl } from '@/lib/utils';
 
+const ADMIN_USER_IDS = (import.meta.env.VITE_ADMIN_USER_IDS || '')
+  .split(',')
+  .map((id: string) => id.trim())
+  .filter(Boolean);
+
 export default function Header() {
+  const { user } = useUser();
+  const isAdmin = user ? ADMIN_USER_IDS.includes(user.id) : false;
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-bg-secondary border-b border-bg-border">
       <div className="max-w-7xl mx-auto h-full px-4 flex items-center justify-between">
         {/* Left: Logo + back link */}
         <div className="flex items-center gap-3">
           <Link
-            to="/"
+            to="/dashboard"
             className="font-display text-2xl text-neon-green tracking-wide hover:animate-glow transition-all focus-visible:outline-2 focus-visible:outline-neon-cyan focus-visible:outline-offset-2"
           >
             MNSfantasy
@@ -27,19 +35,21 @@ export default function Header() {
         {/* Center: Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
           <Link
-            to="/"
+            to="/dashboard"
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-card transition-colors focus-visible:outline-2 focus-visible:outline-neon-cyan focus-visible:outline-offset-2"
           >
             <Home className="w-4 h-4" />
             Dashboard
           </Link>
-          <Link
-            to="/admin"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-card transition-colors focus-visible:outline-2 focus-visible:outline-neon-cyan focus-visible:outline-offset-2"
-          >
-            <Shield className="w-4 h-4" />
-            Admin
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-card transition-colors focus-visible:outline-2 focus-visible:outline-neon-cyan focus-visible:outline-offset-2"
+            >
+              <Shield className="w-4 h-4" />
+              Admin
+            </Link>
+          )}
         </nav>
 
         {/* Right: User button */}

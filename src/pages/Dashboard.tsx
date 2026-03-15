@@ -37,7 +37,7 @@ export default function Dashboard() {
       ? trimmed.split('/').filter(Boolean).pop() ?? trimmed
       : trimmed;
 
-    navigate(`/leagues/join/${code}`);
+    navigate(`/join/${code}`);
   };
 
   // ---------- Render ----------
