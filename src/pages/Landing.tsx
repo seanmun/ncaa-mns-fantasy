@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Users, UserPlus, Trophy, ChevronLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
 import { getPlatformUrl } from '@/lib/utils';
 
 const steps = [
@@ -70,18 +71,36 @@ export default function Landing() {
             </a>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              to="/sign-up"
-              className="rounded-lg bg-neon-green px-4 py-2 text-sm font-semibold text-gray-900 transition-shadow hover:shadow-[0_0_15px_rgba(0,255,135,0.3)]"
-            >
-              Sign Up
-            </Link>
-            <Link
-              to="/sign-in"
-              className="rounded-lg border border-bg-border bg-bg-card px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-bg-card-hover"
-            >
-              Sign In
-            </Link>
+            <SignedIn>
+              <Link
+                to="/dashboard"
+                className="rounded-lg bg-neon-green px-4 py-2 text-sm font-semibold text-gray-900 transition-shadow hover:shadow-[0_0_15px_rgba(0,255,135,0.3)]"
+              >
+                Dashboard
+              </Link>
+              <UserButton
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: {
+                    avatarBox: 'w-8 h-8',
+                  },
+                }}
+              />
+            </SignedIn>
+            <SignedOut>
+              <Link
+                to="/sign-up"
+                className="rounded-lg bg-neon-green px-4 py-2 text-sm font-semibold text-gray-900 transition-shadow hover:shadow-[0_0_15px_rgba(0,255,135,0.3)]"
+              >
+                Sign Up
+              </Link>
+              <Link
+                to="/sign-in"
+                className="rounded-lg border border-bg-border bg-bg-card px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-bg-card-hover"
+              >
+                Sign In
+              </Link>
+            </SignedOut>
           </div>
         </div>
       </header>

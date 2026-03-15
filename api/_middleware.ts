@@ -5,12 +5,21 @@ import type { VercelRequest } from '@vercel/node';
 const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 
 export async function verifyAuth(req: VercelRequest): Promise<string | null> {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return null;
+  const authHeader = req.headers.authorization;
+  console.log('AUTH HEADER:', authHeader?.substring(0, 50));
+  console.log('CLERK_SECRET_KEY exists:', !!process.env.CLERK_SECRET_KEY);
+
+  const token = authHeader?.replace('Bearer ', '');
+  if (!token) {
+    console.log('AUTH: No token found');
+    return null;
+  }
   try {
     const { sub } = await clerk.verifyToken(token);
+    console.log('AUTH: Token verified, userId:', sub);
     return sub;
-  } catch {
+  } catch (err) {
+    console.error('AUTH: Token verification failed:', err);
     return null;
   }
 }

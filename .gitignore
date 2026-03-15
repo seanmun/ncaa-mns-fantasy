@@ -26,3 +26,7 @@ npm-debug.log*
 
 # drizzle
 drizzle/meta/
+.vercel
+
+# docs
+ISSUES.md

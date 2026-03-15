@@ -19,17 +19,17 @@ export function getProjectedScore(avgPts: string, avgReb: string, avgAst: string
 }
 
 export function isRosterLocked(): boolean {
-  const lockDate = import.meta.env.VITE_ROSTER_LOCK_DATE || '2025-03-20T12:00:00-05:00';
+  const lockDate = import.meta.env.VITE_ROSTER_LOCK_DATE || '2026-03-19T12:00:00-05:00';
   return new Date() >= new Date(lockDate);
 }
 
 export function getRosterLockDate(): Date {
-  const lockDate = import.meta.env.VITE_ROSTER_LOCK_DATE || '2025-03-20T12:00:00-05:00';
+  const lockDate = import.meta.env.VITE_ROSTER_LOCK_DATE || '2026-03-19T12:00:00-05:00';
   return new Date(lockDate);
 }
 
 export function getGameSlug(): string {
-  return import.meta.env.VITE_GAME_SLUG || 'ncaa-mens-2025';
+  return import.meta.env.VITE_GAME_SLUG || 'ncaa-mens-2026';
 }
 
 export function getPlatformUrl(): string {

@@ -102,7 +102,7 @@ export default function Dashboard() {
 
         {isError && (
           <div className="rounded-xl border border-neon-red/30 bg-neon-red/5 px-6 py-4 text-sm text-neon-red">
-            Something went wrong loading your leagues. Please try again.
+            Unable to load leagues. You may need to sign in again.
           </div>
         )}
 
