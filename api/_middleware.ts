@@ -1,14 +1,13 @@
-import { createClerkClient } from '@clerk/backend';
+import { verifyToken } from '@clerk/backend';
+import type { VercelRequest } from '@vercel/node';
 
-const clerkClient = createClerkClient({
-  secretKey: process.env.CLERK_SECRET_KEY
-});
-
-export async function verifyAuth(request: Request): Promise<string | null> {
+export async function verifyAuth(req: VercelRequest): Promise<string | null> {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) return null;
-    const payload = await clerkClient.verifyToken(token);
+    const payload = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY!,
+    });
     return payload.sub;
   } catch (e) {
     console.log('verify error:', e);
