@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Backgrounds */
+  --bg-primary: #080b10;
+  --bg-secondary: #0d1117;
+  --bg-card: #111827;
+  --bg-card-hover: #1a2235;
+  --bg-border: #1f2937;
+
+  /* Neon Accents */
+  --neon-green: #00ff87;
+  --neon-cyan: #00e5ff;
+  --neon-purple: #bf5af2;
+  --neon-orange: #ff9f0a;
+  --neon-red: #ff453a;
+
+  /* Text */
+  --text-primary: #f0f4f8;
+  --text-secondary: #8b949e;
+  --text-muted: #4b5563;
+
+  /* Seed tier colors */
+  --tier-1: #00ff87;
+  --tier-2: #00e5ff;
+  --tier-3: #bf5af2;
+  --tier-4: #ff9f0a;
+
+  /* Status */
+  --status-locked: #ff453a;
+  --status-active: #00ff87;
+  --status-eliminated: #4b5563;
+}
+
+/* Light mode override */
+[data-theme='light'] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --bg-border: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+}
+
+/* Font size variants */
+[data-fontsize='sm'] {
+  font-size: 14px;
+}
+[data-fontsize='md'] {
+  font-size: 16px;
+}
+[data-fontsize='lg'] {
+  font-size: 18px;
+}
+
+/* Focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Base body styles */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* Skeleton loader dark theme override */
+.react-loading-skeleton {
+  --base-color: var(--bg-card) !important;
+  --highlight-color: var(--bg-card-hover) !important;
+}

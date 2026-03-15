@@ -1,0 +1,51 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { verifyAuth } from '../_middleware';
+import { db } from '../_db';
+import { users, marketingSubscribers } from '../../src/lib/db/schema';
+import { eq } from 'drizzle-orm';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const userId = await verifyAuth(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { globalOptIn, mnsInsights, source } = req.body;
+
+  // Get user email from users table
+  const userRecord = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!userRecord[0]) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  // Upsert marketing subscriber record
+  await db
+    .insert(marketingSubscribers)
+    .values({
+      userId,
+      email: userRecord[0].email,
+      globalOptIn: globalOptIn ?? false,
+      prefMnsInsights: mnsInsights ?? false,
+      source: source || 'ncaa-mens-2025',
+      optedInAt: globalOptIn ? new Date() : null,
+    })
+    .onConflictDoUpdate({
+      target: marketingSubscribers.userId,
+      set: {
+        globalOptIn: globalOptIn ?? false,
+        prefMnsInsights: mnsInsights ?? false,
+        updatedAt: new Date(),
+      },
+    });
+
+  return res.status(200).json({ success: true });
+}
