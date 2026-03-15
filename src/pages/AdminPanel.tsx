@@ -14,6 +14,7 @@ import {
   Eye,
   AlertTriangle,
   X,
+  Download,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -259,6 +260,9 @@ export default function AdminPanel() {
   const statsFileRef = useRef<HTMLInputElement>(null);
   const [statsPreview, setStatsPreview] = useState<StatsRow[] | null>(null);
 
+  // ---- Import state ----
+  const [importLog, setImportLog] = useState<string[]>([]);
+
   // ---- Eliminate Team state ----
   const [selectedTeam, setSelectedTeam] = useState('');
   const [selectedRound, setSelectedRound] = useState(TOURNAMENT_ROUNDS[0]);
@@ -379,6 +383,56 @@ export default function AdminPanel() {
     },
   });
 
+  // SportsRadar Import — Step 1: Teams
+  const importTeamsMutation = useMutation({
+    mutationFn: () =>
+      apiFetch('/api/admin/import-players?step=teams', { method: 'POST' }),
+    onSuccess: (data: { teamsInserted: number; teamsUpdated: number; totalProcessed: number }) => {
+      const msg = `Teams imported: ${data.teamsInserted} new, ${data.teamsUpdated} updated (${data.totalProcessed} total)`;
+      toast.success(msg);
+      setImportLog((prev) => [...prev, msg]);
+      queryClient.invalidateQueries({ queryKey: ['players-teams'] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to import teams');
+      setImportLog((prev) => [...prev, `Error importing teams: ${err.message}`]);
+    },
+  });
+
+  // SportsRadar Import — Step 2: Players (batched)
+  const importPlayersMutation = useMutation({
+    mutationFn: (offset: number) =>
+      apiFetch(`/api/admin/import-players?step=players&batchSize=25&offset=${offset}`, {
+        method: 'POST',
+      }),
+    onSuccess: (data: {
+      playersUpserted: number;
+      teamsProcessed: number;
+      teamsErrored: number;
+      totalTeams: number;
+      nextOffset: number | null;
+      done: boolean;
+    }) => {
+      const msg = `Batch done: ${data.playersUpserted} players from ${data.teamsProcessed} teams (${data.teamsErrored} errors). ${data.totalTeams} total teams.`;
+      setImportLog((prev) => [...prev, msg]);
+
+      if (data.done) {
+        toast.success('All players imported!');
+        queryClient.invalidateQueries({ queryKey: ['players-teams'] });
+      } else {
+        toast.info(`Batch complete. Processing next batch (offset ${data.nextOffset})...`);
+        // Auto-continue with next batch
+        if (data.nextOffset !== null) {
+          importPlayersMutation.mutate(data.nextOffset);
+        }
+      }
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to import players batch');
+      setImportLog((prev) => [...prev, `Error: ${err.message}`]);
+    },
+  });
+
   /* ---------------------------------------------------------------- */
   /*  CSV parse helpers                                                */
   /* ---------------------------------------------------------------- */
@@ -441,9 +495,64 @@ export default function AdminPanel() {
         </div>
 
         {/* ================================================================ */}
+        {/*  Section 0: SportsRadar Import                                     */}
+        {/* ================================================================ */}
+        <SectionCard title="SportsRadar Import" icon={Download} delay={0.03}>
+          <div className="space-y-4">
+            <p className="text-sm text-text-secondary">
+              Import all NCAA teams and players with season averages directly from SportsRadar.
+              Step 1 imports teams (fast). Step 2 imports players in batches (~25 teams per batch, auto-continues).
+            </p>
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  setImportLog([]);
+                  importTeamsMutation.mutate();
+                }}
+                loading={importTeamsMutation.isPending}
+              >
+                <Download className="h-4 w-4" />
+                Step 1: Import Teams
+              </Button>
+
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => importPlayersMutation.mutate(0)}
+                loading={importPlayersMutation.isPending}
+              >
+                <Download className="h-4 w-4" />
+                Step 2: Import Players
+              </Button>
+            </div>
+
+            {importLog.length > 0 && (
+              <div className="rounded-lg border border-bg-border bg-bg-primary p-4 max-h-48 overflow-y-auto">
+                <p className="mb-2 text-xs font-semibold text-text-muted uppercase tracking-wider">
+                  Import Log
+                </p>
+                {importLog.map((line, i) => (
+                  <p key={i} className="text-xs text-text-secondary py-0.5">
+                    {line}
+                  </p>
+                ))}
+                {importPlayersMutation.isPending && (
+                  <p className="text-xs text-neon-cyan py-0.5 animate-pulse">
+                    Processing batch...
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </SectionCard>
+
+        {/* ================================================================ */}
         {/*  Section 1: Player Pool Upload                                    */}
         {/* ================================================================ */}
-        <SectionCard title="Player Pool Upload" icon={Upload} delay={0.05}>
+        <SectionCard title="Player Pool Upload (CSV)" icon={Upload} delay={0.05}>
           <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="flex-1">
