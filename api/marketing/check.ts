@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAuth } from '../_middleware';
-import { db } from '../_db';
-import { marketingSubscribers } from '../../src/lib/db/schema';
+import { verifyAuth } from '../_middleware.js';
+import { db } from '../_db.js';
+import { marketingSubscribers } from '../../src/lib/db/schema.js';
 import { eq } from 'drizzle-orm';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

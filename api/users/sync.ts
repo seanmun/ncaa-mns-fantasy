@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAuth } from '../_middleware';
-import { db } from '../_db';
-import { users } from '../../src/lib/db/schema';
+import { verifyAuth } from '../_middleware.js';
+import { db } from '../_db.js';
+import { users } from '../../src/lib/db/schema.js';
 import { eq } from 'drizzle-orm';
 
 // PLATFORM PATTERN — reuse in every game app

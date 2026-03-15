@@ -2,9 +2,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { render } from '@react-email/components';
 import { Resend } from 'resend';
 import { eq, and, desc, gte, lt, sql } from 'drizzle-orm';
-import { verifyAuth, isAdmin } from '../_middleware';
-import { db, schema } from '../_db';
-import MorningUpdateEmail from '../../src/components/email/MorningUpdateEmail';
+import { verifyAuth, isAdmin } from '../_middleware.js';
+import { db, schema } from '../_db.js';
+import MorningUpdateEmail from '../../src/components/email/MorningUpdateEmail.js';
 
 const {
   leagues,

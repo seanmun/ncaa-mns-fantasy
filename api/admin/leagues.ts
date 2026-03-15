@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq, count } from 'drizzle-orm';
-import { verifyAuth, isAdmin } from '../_middleware';
-import { db, schema } from '../_db';
+import { verifyAuth, isAdmin } from '../_middleware.js';
+import { db, schema } from '../_db.js';
 
 const { leagues, leagueMembers, users } = schema;
 

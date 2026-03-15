@@ -2,9 +2,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { render } from '@react-email/components';
 import { Resend } from 'resend';
 import { eq, and } from 'drizzle-orm';
-import { verifyAuth } from '../_middleware';
-import { db, schema } from '../_db';
-import WelcomeEmail from '../../src/components/email/WelcomeEmail';
+import { verifyAuth } from '../_middleware.js';
+import { db, schema } from '../_db.js';
+import WelcomeEmail from '../../src/components/email/WelcomeEmail.js';
 
 const {
   leagues,

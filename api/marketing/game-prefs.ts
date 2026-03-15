@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAuth } from '../_middleware';
-import { db } from '../_db';
-import { marketingGamePrefs } from '../../src/lib/db/schema';
+import { verifyAuth } from '../_middleware.js';
+import { db } from '../_db.js';
+import { marketingGamePrefs } from '../../src/lib/db/schema.js';
 import { eq, and } from 'drizzle-orm';
 
 const GAME_SLUG = process.env.GAME_SLUG || 'ncaa-mens-2025';

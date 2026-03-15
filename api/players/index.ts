@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq, inArray } from 'drizzle-orm';
-import { verifyAuth } from '../_middleware';
-import { db, schema } from '../_db';
+import { verifyAuth } from '../_middleware.js';
+import { db, schema } from '../_db.js';
 
 const { players, ncaaTeams } = schema;
 

@@ -2,9 +2,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { render } from '@react-email/components';
 import { Resend } from 'resend';
 import { eq, and, gte } from 'drizzle-orm';
-import { verifyAuth, isAdmin } from '../_middleware';
-import { db, schema } from '../_db';
-import RosterLockedEmail from '../../src/components/email/RosterLockedEmail';
+import { verifyAuth, isAdmin } from '../_middleware.js';
+import { db, schema } from '../_db.js';
+import RosterLockedEmail from '../../src/components/email/RosterLockedEmail.js';
 
 const {
   leagues,

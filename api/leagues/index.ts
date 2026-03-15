@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq, and, sql, count } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { verifyAuth } from '../_middleware';
-import { db, schema } from '../_db';
+import { verifyAuth } from '../_middleware.js';
+import { db, schema } from '../_db.js';
 
 const { leagues, leagueMembers } = schema;
 
