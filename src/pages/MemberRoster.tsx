@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@clerk/clerk-react';
 import { Pencil } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
-import { PlayerStatsCard } from '@/components/player/PlayerStatsCard';
 import PageTransition from '@/components/layout/PageTransition';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
@@ -163,31 +162,32 @@ export default function MemberRoster() {
 
         {/* ========== Roster View ========== */}
         {activeTab === 'roster' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {isLoading ? (
-              <>
-                {[1, 2, 3, 4].map((tier) => (
-                  <div key={tier} className="space-y-3">
-                    <Skeleton
-                      height={20}
-                      width="30%"
-                      baseColor="#1f2937"
-                      highlightColor="#374151"
-                    />
-                    {Array.from({ length: tier === 1 ? 4 : tier === 2 ? 3 : tier === 3 ? 2 : 1 }).map((_, i) => (
-                      <Skeleton
-                        key={i}
-                        height={120}
-                        baseColor="#1f2937"
-                        highlightColor="#374151"
-                        className="rounded-xl"
-                      />
-                    ))}
-                  </div>
+              <div className="space-y-2">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <Skeleton
+                    key={i}
+                    height={40}
+                    baseColor="#1f2937"
+                    highlightColor="#374151"
+                    className="rounded-lg"
+                  />
                 ))}
-              </>
+              </div>
             ) : grouped ? (
               <>
+                {/* Stat column headers */}
+                <div className="flex items-center gap-3 px-2 pb-1">
+                  <div className="flex-1" />
+                  <div className="flex items-center gap-4 shrink-0 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                    <span className="w-8 text-right">PTS</span>
+                    <span className="w-8 text-right">REB</span>
+                    <span className="w-8 text-right">AST</span>
+                    <span className="w-10 text-right">TOT</span>
+                  </div>
+                </div>
+
                 {SEED_TIERS.map((tier) => {
                   const tierPlayers = grouped[tier.tier];
                   if (!tierPlayers || tierPlayers.length === 0) return null;
@@ -197,22 +197,65 @@ export default function MemberRoster() {
                       {/* Tier header */}
                       <h2
                         className={cn(
-                          'mb-3 border-b pb-2 font-display text-lg tracking-wide',
+                          'mb-2 border-b pb-1.5 font-display text-sm tracking-wide',
                           TIER_ACCENT[tier.tier],
                         )}
                       >
                         {TIER_LABELS[tier.tier]}
                       </h2>
 
-                      {/* Player cards */}
-                      <div className="space-y-3">
-                        {tierPlayers.map((player) => (
-                          <PlayerStatsCard
-                            key={player.id}
-                            player={player}
-                            showTournamentStats
-                          />
-                        ))}
+                      {/* Player list */}
+                      <div className="divide-y divide-bg-border/50">
+                        {tierPlayers.map((player) => {
+                          const eliminated = player.team.isEliminated;
+                          return (
+                            <div
+                              key={player.id}
+                              className={cn(
+                                'flex items-center gap-3 py-2.5 px-2',
+                                eliminated && 'opacity-40',
+                              )}
+                            >
+                              {/* Player info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={cn(
+                                      'text-sm font-semibold text-text-primary truncate',
+                                      eliminated && 'line-through',
+                                    )}
+                                  >
+                                    {player.name}
+                                  </span>
+                                  <span className="shrink-0 text-xs text-text-muted">
+                                    {player.team.shortName}
+                                  </span>
+                                  {eliminated && (
+                                    <span className="shrink-0 rounded-full bg-neon-red/15 px-1.5 py-0.5 text-[10px] font-semibold text-neon-red">
+                                      OUT
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Stats */}
+                              <div className="flex items-center gap-4 shrink-0 font-mono text-xs">
+                                <span className="w-8 text-right text-text-secondary">
+                                  {player.totalPts}
+                                </span>
+                                <span className="w-8 text-right text-text-secondary">
+                                  {player.totalReb}
+                                </span>
+                                <span className="w-8 text-right text-text-secondary">
+                                  {player.totalAst}
+                                </span>
+                                <span className="w-10 text-right font-bold text-neon-green">
+                                  {player.totalScore}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </section>
                   );
@@ -220,13 +263,13 @@ export default function MemberRoster() {
 
                 {/* ---- Running total ---- */}
                 {roster && (
-                  <div className="mt-4 rounded-xl border border-neon-green/30 bg-bg-card p-6 text-center">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
+                  <div className="rounded-xl border border-neon-green/30 bg-bg-card px-4 py-4 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                       Total Score
-                    </p>
-                    <p className="font-display text-5xl tracking-wide text-neon-green">
+                    </span>
+                    <span className="font-display text-3xl tracking-wide text-neon-green">
                       {formatScore(roster.totalScore)}
-                    </p>
+                    </span>
                   </div>
                 )}
               </>
