@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { UserButton } from '@clerk/clerk-react';
-import { ChevronLeft, Home, Shield } from 'lucide-react';
+import { ChevronLeft, Home, Shield, Settings } from 'lucide-react';
 import { getPlatformUrl } from '@/lib/utils';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 
@@ -35,6 +35,13 @@ export default function Header() {
           >
             <Home className="w-4 h-4" />
             Dashboard
+          </Link>
+          <Link
+            to="/settings"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-card transition-colors focus-visible:outline-2 focus-visible:outline-neon-cyan focus-visible:outline-offset-2"
+          >
+            <Settings className="w-4 h-4" />
+            Settings
           </Link>
           {isAdmin && (
             <Link

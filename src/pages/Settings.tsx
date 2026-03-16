@@ -3,8 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  Sun,
-  Moon,
   Volume2,
   VolumeX,
   Bell,
@@ -96,7 +94,7 @@ function ToggleSwitch({
 /* ------------------------------------------------------------------ */
 
 export default function Settings() {
-  const { theme, fontSize, soundsMuted, setTheme, setFontSize, toggleSounds } =
+  const { fontSize, soundsMuted, setFontSize, toggleSounds } =
     useAppStore();
   const { apiFetch } = useApi();
   const queryClient = useQueryClient();
@@ -180,39 +178,6 @@ export default function Settings() {
         {/* ============================================================== */}
         <SectionCard title="Appearance" delay={0.05}>
           <div className="space-y-6">
-            {/* Theme toggle */}
-            <div>
-              <label className="mb-2 block text-sm font-medium text-text-secondary">
-                Theme
-              </label>
-              <div className="inline-flex rounded-full border border-bg-border bg-bg-primary p-1">
-                <button
-                  type="button"
-                  onClick={() => setTheme('dark')}
-                  className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-all duration-150 ${
-                    theme === 'dark'
-                      ? 'bg-neon-green text-gray-900 shadow-[0_0_15px_rgba(0,255,135,0.3)]'
-                      : 'text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  <Moon className="h-4 w-4" />
-                  Dark
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTheme('light')}
-                  className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-all duration-150 ${
-                    theme === 'light'
-                      ? 'bg-neon-green text-gray-900 shadow-[0_0_15px_rgba(0,255,135,0.3)]'
-                      : 'text-text-secondary hover:text-text-primary'
-                  }`}
-                >
-                  <Sun className="h-4 w-4" />
-                  Light
-                </button>
-              </div>
-            </div>
-
             {/* Font Size */}
             <div>
               <label className="mb-2 block text-sm font-medium text-text-secondary">

@@ -34,18 +34,6 @@
   --status-eliminated: #4b5563;
 }
 
-/* Light mode override */
-[data-theme='light'] {
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f1f5f9;
-  --bg-border: #e2e8f0;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
-}
-
 /* Font size variants */
 [data-fontsize='sm'] {
   font-size: 14px;

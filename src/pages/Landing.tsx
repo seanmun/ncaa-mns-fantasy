@@ -121,21 +121,12 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* ========== HERO with video background ========== */}
+      {/* ========== HERO ========== */}
       <section className="relative min-h-[80vh] flex flex-col items-center justify-center px-4 pt-28 pb-16 sm:pt-36 sm:pb-20 text-center overflow-hidden">
-        {/* Full-screen background video */}
-        <video
-          ref={(el) => { if (el) el.playbackRate = 0.33; }}
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src="/videos/bracket.mp4" type="video/mp4" />
-        </video>
-        {/* Heavy dark overlay — video is subtle background texture */}
-        <div className="absolute inset-0 bg-[rgba(8,11,16,0.90)]" />
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#080b10] via-[#0a1628] to-[#080b10]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,255,135,0.08)_0%,transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(0,229,255,0.05)_0%,transparent_50%)]" />
         {/* Bottom fade into page background */}
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#080b10] to-transparent" />
         {/* Hero content — above video */}
