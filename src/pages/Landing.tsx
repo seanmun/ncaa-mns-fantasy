@@ -102,18 +102,18 @@ export default function Landing() {
               />
             </SignedIn>
             <SignedOut>
-              <Link
-                to="/sign-up"
+              <a
+                href="https://mnsfantasy.com/sign-up?redirect_url=https://ncaa.mnsfantasy.com/dashboard"
                 className="rounded-lg bg-neon-green px-4 py-2 text-sm font-semibold text-gray-900 transition-shadow hover:shadow-[0_0_15px_rgba(0,255,135,0.3)]"
               >
                 Sign Up
-              </Link>
-              <Link
-                to="/sign-in"
+              </a>
+              <a
+                href="https://mnsfantasy.com/sign-in?redirect_url=https://ncaa.mnsfantasy.com/dashboard"
                 className="rounded-lg border border-bg-border bg-bg-card px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-bg-card-hover"
               >
                 Sign In
-              </Link>
+              </a>
             </SignedOut>
           </div>
         </div>
