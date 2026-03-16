@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '@/hooks/useApi';
-import { PlayerCard } from '@/components/player/PlayerCard';
 import PageTransition from '@/components/layout/PageTransition';
 import {
   SEED_TIERS,
@@ -350,39 +349,73 @@ export default function PickRoster() {
             </span>
           </div>
 
+          {/* Column headers */}
+          <div className="flex items-center gap-3 px-3 pb-1.5 text-[10px] uppercase tracking-wider text-text-muted font-mono">
+            <div className="flex-1">Player</div>
+            <span className="w-10 text-right hidden sm:block">PTS</span>
+            <span className="w-10 text-right hidden sm:block">REB</span>
+            <span className="w-10 text-right hidden sm:block">AST</span>
+            <span className="w-12 text-right">Proj</span>
+          </div>
+
           {SEED_TIERS.map((tierConfig) => {
             const tierPlayers = groupedByTier[tierConfig.tier];
             if (tierPlayers.length === 0) return null;
             return (
               <section key={tierConfig.tier}>
                 <h2
-                  className={`mb-4 border-l-4 pl-3 font-display text-xl tracking-wide ${TIER_BORDER_LEFT[tierConfig.tier]} ${TIER_TEXT_COLOR[tierConfig.tier]}`}
+                  className={`mb-2 border-l-4 pl-3 font-display text-sm tracking-wide ${TIER_BORDER_LEFT[tierConfig.tier]} ${TIER_TEXT_COLOR[tierConfig.tier]}`}
                 >
-                  {tierConfig.label} &mdash; Seeds{' '}
-                  {tierConfig.seeds[0]}&ndash;
-                  {tierConfig.seeds[tierConfig.seeds.length - 1]}
+                  {tierConfig.label}
                 </h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {tierPlayers.map((player) => (
-                    <PlayerCard
-                      key={player.id}
-                      player={player}
-                      isSelected={true}
-                      isDisabled={true}
-                      isHot={false}
-                      onPick={() => {}}
-                      tier={tierConfig.tier as 1 | 2 | 3 | 4}
-                    />
-                  ))}
+                <div className="divide-y divide-bg-border/40 rounded-xl border border-bg-border bg-bg-card overflow-hidden mb-4">
+                  {tierPlayers.map((player) => {
+                    const projScore = getProjectedScore(
+                      player.avgPts,
+                      player.avgReb,
+                      player.avgAst,
+                    );
+                    return (
+                      <div
+                        key={player.id}
+                        className={`flex items-center gap-3 px-3 py-2.5 border-l-4 ${TIER_BORDER_LEFT[tierConfig.tier]}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-text-primary truncate">
+                              {player.name}
+                            </span>
+                            <span className="shrink-0 text-xs text-text-muted">
+                              {player.team.shortName}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="w-10 text-right font-mono text-xs text-text-secondary hidden sm:block">
+                          {parseFloat(player.avgPts).toFixed(1)}
+                        </span>
+                        <span className="w-10 text-right font-mono text-xs text-text-secondary hidden sm:block">
+                          {parseFloat(player.avgReb).toFixed(1)}
+                        </span>
+                        <span className="w-10 text-right font-mono text-xs text-text-secondary hidden sm:block">
+                          {parseFloat(player.avgAst).toFixed(1)}
+                        </span>
+                        <span className="w-12 text-right font-mono text-sm font-bold text-text-primary">
+                          {projScore.toFixed(1)}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
             );
           })}
 
           {rosterPlayers.length > 0 && (
-            <div className="text-center">
-              <p className="text-sm text-text-muted">Projected Total</p>
-              <p className="font-mono text-3xl font-bold text-neon-green">
+            <div className="rounded-xl border border-neon-green/30 bg-bg-card px-4 py-4 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                Projected Total
+              </span>
+              <span className="font-mono text-3xl font-bold text-neon-green">
                 {rosterPlayers
                   .reduce(
                     (sum, p) =>
@@ -390,7 +423,7 @@ export default function PickRoster() {
                     0,
                   )
                   .toFixed(1)}
-              </p>
+              </span>
             </div>
           )}
         </div>
@@ -558,7 +591,7 @@ export default function PickRoster() {
                 </div>
               </div>
 
-              {/* Player grid — single tier at a time */}
+              {/* Player list — single tier at a time */}
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTier}
@@ -572,41 +605,80 @@ export default function PickRoster() {
                       No players match your filter.
                     </p>
                   ) : (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
-                      {activeTierPlayers.map((player) => {
-                        const selected = isPlayerSelected(player.id);
-                        const disabled = activeTierFull && !selected;
-                        const projScore = getProjectedScore(
-                          player.avgPts,
-                          player.avgReb,
-                          player.avgAst,
-                        );
-                        const hot = projScore >= hotThreshold;
+                    <div>
+                      {/* Column headers */}
+                      <div className="flex items-center gap-3 px-3 pb-1.5 text-[10px] uppercase tracking-wider text-text-muted font-mono">
+                        <div className="flex-1">Player</div>
+                        <span className="w-10 text-right hidden sm:block">PTS</span>
+                        <span className="w-10 text-right hidden sm:block">REB</span>
+                        <span className="w-10 text-right hidden sm:block">AST</span>
+                        <span className="w-12 text-right">Proj</span>
+                      </div>
 
-                        return (
-                          <motion.div
-                            key={player.id}
-                            layout
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{
-                              type: 'spring',
-                              stiffness: 400,
-                              damping: 25,
-                            }}
-                          >
-                            <PlayerCard
-                              player={player}
-                              isSelected={selected}
-                              isDisabled={disabled}
-                              isHot={hot}
-                              onPick={(p) => handlePick(p, activeTier)}
-                              tier={activeTier as 1 | 2 | 3 | 4}
-                            />
-                          </motion.div>
-                        );
-                      })}
+                      <div className="divide-y divide-bg-border/40 rounded-xl border border-bg-border bg-bg-card overflow-hidden">
+                        {activeTierPlayers.map((player) => {
+                          const selected = isPlayerSelected(player.id);
+                          const disabled = activeTierFull && !selected;
+                          const projScore = getProjectedScore(
+                            player.avgPts,
+                            player.avgReb,
+                            player.avgAst,
+                          );
+                          const hot = projScore >= hotThreshold;
+
+                          return (
+                            <button
+                              key={player.id}
+                              type="button"
+                              onClick={() => handlePick(player, activeTier)}
+                              disabled={disabled}
+                              className={cn(
+                                'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors',
+                                selected
+                                  ? `${TIER_BG_LOW[activeTier]} border-l-4 ${TIER_BORDER_LEFT[activeTier]}`
+                                  : 'border-l-4 border-l-transparent hover:bg-bg-card-hover',
+                                disabled && !selected && 'opacity-35 cursor-not-allowed',
+                              )}
+                            >
+                              {/* Player info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-semibold text-text-primary truncate">
+                                    {player.name}
+                                  </span>
+                                  <span className="shrink-0 text-xs text-text-muted">
+                                    {player.team.shortName}
+                                  </span>
+                                  {hot && (
+                                    <span className="shrink-0 text-xs" aria-label="Hot pick">
+                                      {'🔥'}
+                                    </span>
+                                  )}
+                                  {selected && (
+                                    <Check className={`shrink-0 h-3.5 w-3.5 ${TIER_TEXT_COLOR[activeTier]}`} />
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Season averages */}
+                              <span className="w-10 text-right font-mono text-xs text-text-secondary hidden sm:block">
+                                {parseFloat(player.avgPts).toFixed(1)}
+                              </span>
+                              <span className="w-10 text-right font-mono text-xs text-text-secondary hidden sm:block">
+                                {parseFloat(player.avgReb).toFixed(1)}
+                              </span>
+                              <span className="w-10 text-right font-mono text-xs text-text-secondary hidden sm:block">
+                                {parseFloat(player.avgAst).toFixed(1)}
+                              </span>
+
+                              {/* Projected */}
+                              <span className="w-12 text-right font-mono text-sm font-bold text-text-primary">
+                                {projScore.toFixed(1)}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </motion.div>
