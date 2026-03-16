@@ -25,7 +25,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       publishableKey={CLERK_PUBLISHABLE_KEY}
       allowedRedirectOrigins={ALLOWED_REDIRECT_ORIGINS}
       isSatellite
-      domain="mnsfantasy.com"
+      domain="ncaa.mnsfantasy.com"
       signInUrl="https://mnsfantasy.com/sign-in"
       afterSignOutUrl="https://mnsfantasy.com"
     >
