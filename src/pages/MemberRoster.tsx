@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useUser } from '@clerk/clerk-react';
+import { Pencil } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { PlayerStatsCard } from '@/components/player/PlayerStatsCard';
 import PageTransition from '@/components/layout/PageTransition';
@@ -8,7 +10,7 @@ import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { SEED_TIERS } from '@/types';
 import type { PlayerWithStats } from '@/types';
-import { cn, formatScore } from '@/lib/utils';
+import { cn, formatScore, isRosterLocked } from '@/lib/utils';
 import BracketView from '@/components/bracket/BracketView';
 
 /* ------------------------------------------------------------------ */
@@ -71,7 +73,10 @@ function groupPlayersByTier(
 export default function MemberRoster() {
   const { id, memberId } = useParams<{ id: string; memberId: string }>();
   const { apiFetch } = useApi();
+  const { user } = useUser();
   const [activeTab, setActiveTab] = useState<Tab>('roster');
+  const isOwnRoster = user?.id === memberId;
+  const locked = isRosterLocked();
 
   /* ---------- Fetch roster ---------- */
   const { data: roster, isLoading } = useQuery<MemberRosterData>({
@@ -106,13 +111,24 @@ export default function MemberRoster() {
             />
           </div>
         ) : roster ? (
-          <div className="mb-6">
-            <h1 className="font-display text-3xl tracking-wide text-text-primary">
-              {roster.teamName}
-            </h1>
-            <p className="mt-1 text-sm text-text-secondary">
-              {roster.displayName}
-            </p>
+          <div className="mb-6 flex items-start justify-between">
+            <div>
+              <h1 className="font-display text-3xl tracking-wide text-text-primary">
+                {roster.teamName}
+              </h1>
+              <p className="mt-1 text-sm text-text-secondary">
+                {roster.displayName}
+              </p>
+            </div>
+            {isOwnRoster && !locked && (
+              <Link
+                to={`/leagues/${id}/pick`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-neon-green px-4 py-2 text-sm font-semibold text-gray-900 transition-all hover:shadow-[0_0_15px_rgba(0,255,135,0.3)]"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Roster
+              </Link>
+            )}
           </div>
         ) : null}
 

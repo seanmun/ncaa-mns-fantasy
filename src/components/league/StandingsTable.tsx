@@ -168,14 +168,12 @@ export function StandingsTable({
                   )}
                 </td>
 
-                {/* Player count */}
-                <td className="px-4 py-3 text-sm text-text-secondary">
-                  {entry.playerCount} picks
-                  {entry.eliminatedCount > 0 && (
-                    <span className="ml-1 text-text-muted">
-                      ({entry.eliminatedCount} eliminated)
-                    </span>
-                  )}
+                {/* Active players */}
+                <td className="px-4 py-3 text-sm font-mono">
+                  <span className={entry.eliminatedCount > 0 ? 'text-neon-orange' : 'text-neon-green'}>
+                    {entry.playerCount - entry.eliminatedCount}
+                  </span>
+                  <span className="text-text-muted">/{entry.playerCount}</span>
                 </td>
 
                 {/* PTS */}

@@ -120,7 +120,7 @@ export default function Landing() {
       </header>
 
       {/* ========== HERO ========== */}
-      <section className="relative min-h-[80vh] flex flex-col items-center justify-center px-4 pt-28 pb-16 sm:pt-36 sm:pb-20 text-center overflow-hidden">
+      <section className="relative flex flex-col items-center justify-center px-4 pt-24 pb-10 sm:pt-28 sm:pb-14 text-center overflow-hidden">
         {/* Animated gradient background */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#080b10] via-[#0a1628] to-[#080b10]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,255,135,0.08)_0%,transparent_50%)]" />
@@ -154,7 +154,7 @@ export default function Landing() {
             initial="hidden"
             animate="visible"
             transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
-            className="mt-5 max-w-xl font-body text-base sm:text-lg text-text-secondary leading-relaxed"
+            className="mt-4 max-w-xl font-body text-base sm:text-lg text-text-secondary leading-relaxed"
           >
             Draft 10 real NCAA tournament players across four seed tiers.
             Earn points from their actual stats — points, rebounds, and assists —
@@ -167,7 +167,7 @@ export default function Landing() {
             initial="hidden"
             animate="visible"
             transition={{ duration: 0.5, ease: 'easeOut', delay: 0.35 }}
-            className="mt-10 flex flex-col sm:flex-row items-center gap-4"
+            className="mt-8 flex flex-col sm:flex-row items-center gap-4"
           >
             <Link
               to="/leagues/create"
@@ -187,14 +187,14 @@ export default function Landing() {
       </section>
 
       {/* ========== TIER BREAKDOWN ========== */}
-      <section className="relative mx-auto max-w-3xl px-4 pb-20">
+      <section className="relative mx-auto max-w-3xl px-4 pb-14">
         <motion.div
           variants={fadeUp}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-8"
+          className="text-center mb-6"
         >
           <h2 className="font-display text-2xl sm:text-3xl tracking-wide text-text-primary">
             Pick 10 Players. Four Tiers.
