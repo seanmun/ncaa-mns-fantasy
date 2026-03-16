@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, useSearchParams } from 'react-router-dom';
+import React from 'react';
+import { Routes, Route } from 'react-router-dom';
 import {
   SignedIn,
-  RedirectToSignIn,
+  SignIn,
   SignUp,
+  RedirectToSignIn,
   useAuth,
 } from '@clerk/clerk-react';
 import { AnimatePresence } from 'framer-motion';
@@ -34,26 +35,8 @@ function UserSync() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
-  const [searchParams] = useSearchParams();
-  const [syncGrace, setSyncGrace] = useState(() =>
-    searchParams.has('__clerk_synced')
-  );
 
-  useEffect(() => {
-    // When __clerk_synced is in the URL, the user just completed the FAPI
-    // handshake. Give Clerk a brief window to establish the session before
-    // we decide to redirect to sign-in.
-    if (syncGrace && isLoaded && !isSignedIn) {
-      const timer = setTimeout(() => setSyncGrace(false), 2500);
-      return () => clearTimeout(timer);
-    }
-    if (isSignedIn) {
-      setSyncGrace(false);
-    }
-  }, [syncGrace, isLoaded, isSignedIn]);
-
-  // Show spinner while Clerk loads or while waiting for satellite sync
-  if (!isLoaded || syncGrace) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg-primary">
         <div className="w-8 h-8 border-2 border-neon-green border-t-transparent rounded-full animate-spin" />
@@ -84,13 +67,17 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route
             path="/sign-in/*"
-            element={<RedirectToSignIn />}
+            element={
+              <div className="min-h-screen flex items-center justify-center bg-bg-primary pt-20">
+                <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" fallbackRedirectUrl="/dashboard" />
+              </div>
+            }
           />
           <Route
             path="/sign-up/*"
             element={
-              <div className="min-h-screen flex items-center justify-center bg-bg-primary">
-                <SignUp routing="path" path="/sign-up" fallbackRedirectUrl="/dashboard" />
+              <div className="min-h-screen flex items-center justify-center bg-bg-primary pt-20">
+                <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" fallbackRedirectUrl="/dashboard" />
               </div>
             }
           />

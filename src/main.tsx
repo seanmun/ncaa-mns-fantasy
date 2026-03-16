@@ -6,7 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
-import { CLERK_PUBLISHABLE_KEY, ALLOWED_REDIRECT_ORIGINS } from './lib/clerk';
+import { CLERK_PUBLISHABLE_KEY } from './lib/clerk';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -23,14 +23,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
     <ClerkProvider
       publishableKey={CLERK_PUBLISHABLE_KEY}
-      allowedRedirectOrigins={ALLOWED_REDIRECT_ORIGINS}
-      isSatellite
-      domain="ncaa.mnsfantasy.com"
-      signInUrl="https://mnsfantasy.com/sign-in"
-      signUpUrl="https://mnsfantasy.com/sign-up"
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/dashboard"
-      afterSignOutUrl="https://mnsfantasy.com"
+      afterSignOutUrl="/"
     >
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>

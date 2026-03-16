@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Users, UserPlus, Trophy, ChevronLeft, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { SignedIn, SignedOut, UserButton, useClerk } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
 import { getPlatformUrl } from '@/lib/utils';
 
 const tiers = [
@@ -67,8 +67,6 @@ const staggerItem = {
 };
 
 export default function Landing() {
-  const { buildSignInUrl, buildSignUpUrl } = useClerk();
-
   return (
     <div className="relative min-h-screen bg-bg-primary overflow-hidden">
       {/* ---------- Top nav bar ---------- */}
@@ -104,18 +102,18 @@ export default function Landing() {
               />
             </SignedIn>
             <SignedOut>
-              <a
-                href={buildSignUpUrl({ afterSignUpUrl: '/dashboard' })}
+              <Link
+                to="/sign-up"
                 className="rounded-lg bg-neon-green px-4 py-2 text-sm font-semibold text-gray-900 transition-shadow hover:shadow-[0_0_15px_rgba(0,255,135,0.3)]"
               >
                 Sign Up
-              </a>
-              <a
-                href={buildSignInUrl({ afterSignInUrl: '/dashboard' })}
+              </Link>
+              <Link
+                to="/sign-in"
                 className="rounded-lg border border-bg-border bg-bg-card px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-bg-card-hover"
               >
                 Sign In
-              </a>
+              </Link>
             </SignedOut>
           </div>
         </div>
