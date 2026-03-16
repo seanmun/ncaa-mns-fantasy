@@ -125,14 +125,14 @@ export default function Landing() {
       <section className="relative min-h-[80vh] flex flex-col items-center justify-center px-4 pt-28 pb-16 sm:pt-36 sm:pb-20 text-center overflow-hidden">
         {/* Full-screen background video */}
         <video
-          ref={(el) => { if (el) el.playbackRate = 0.4; }}
+          ref={(el) => { if (el) el.playbackRate = 0.25; }}
           autoPlay
           loop
           muted
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
         >
-          <source src="/videos/center-ball.mp4" type="video/mp4" />
+          <source src="/videos/bracket.mp4" type="video/mp4" />
         </video>
         {/* Heavy dark overlay — video is subtle background texture */}
         <div className="absolute inset-0 bg-[rgba(8,11,16,0.85)]" />

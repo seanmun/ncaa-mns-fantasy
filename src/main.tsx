@@ -27,6 +27,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       isSatellite
       domain="ncaa.mnsfantasy.com"
       signInUrl="https://mnsfantasy.com/sign-in"
+      signUpUrl="https://mnsfantasy.com/sign-up"
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/dashboard"
       afterSignOutUrl="https://mnsfantasy.com"
     >
       <QueryClientProvider client={queryClient}>
