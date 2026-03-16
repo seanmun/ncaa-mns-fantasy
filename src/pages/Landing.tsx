@@ -120,7 +120,7 @@ export default function Landing() {
       </header>
 
       {/* ========== HERO with video background ========== */}
-      <section className="relative flex flex-col items-center justify-center px-4 pt-28 pb-16 sm:pt-36 sm:pb-20 text-center overflow-hidden">
+      <section className="relative min-h-[80vh] flex flex-col items-center justify-center px-4 pt-28 pb-16 sm:pt-36 sm:pb-20 text-center overflow-hidden">
         {/* Full-screen background video */}
         <video
           ref={(el) => { if (el) el.playbackRate = 0.4; }}

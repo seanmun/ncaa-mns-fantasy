@@ -42,11 +42,16 @@ function PrimarySignInRedirect() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
-  if (!isLoaded) return null;
-  if (!isSignedIn) {
-    window.location.href = 'https://mnsfantasy.com/sign-in?redirect_url=https://ncaa.mnsfantasy.com/dashboard';
-    return null;
-  }
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      window.location.href =
+        'https://mnsfantasy.com/sign-in?redirect_url=' +
+        encodeURIComponent(window.location.href);
+    }
+  }, [isLoaded, isSignedIn]);
+
+  if (!isLoaded || !isSignedIn) return null;
   return <>{children}</>;
 }
 
