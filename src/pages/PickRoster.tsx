@@ -411,7 +411,7 @@ export default function PickRoster() {
         {/* ============================================================= */}
         {/*  TOP STICKY BAR — Tier Navigation Tabs                        */}
         {/* ============================================================= */}
-        <div className="sticky top-16 z-40 border-b border-bg-border bg-bg-secondary/95 backdrop-blur-sm">
+        <div className="sticky top-[96px] z-40 border-b border-bg-border bg-bg-secondary/95 backdrop-blur-sm">
           <div className="mx-auto max-w-5xl px-4">
             <div className="flex items-center gap-1">
               {SEED_TIERS.map((tierConfig) => {
@@ -656,7 +656,7 @@ export default function PickRoster() {
 
           {/* ---------- RIGHT: Desktop sidebar — Selected picks ---------- */}
           <div className="hidden lg:block lg:w-72 shrink-0">
-            <div className="sticky top-[140px]">
+            <div className="sticky top-[160px]">
               <div className="rounded-xl border border-bg-border bg-bg-card p-4 space-y-4">
                 <h3 className="font-display text-sm uppercase tracking-wider text-text-primary">
                   Your Picks

@@ -119,7 +119,7 @@ export function StandingsTable({
 
         <tbody>
           {ranked.map((entry) => {
-            const isCurrentUser = entry.memberId === currentUserId;
+            const isCurrentUser = entry.userId === currentUserId;
 
             return (
               <tr

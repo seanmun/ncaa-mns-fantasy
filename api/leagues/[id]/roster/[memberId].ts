@@ -102,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .innerJoin(players, eq(players.id, rosters.playerId))
       .innerJoin(ncaaTeams, eq(ncaaTeams.id, players.teamId))
       .leftJoin(playerTournamentStats, eq(playerTournamentStats.playerId, players.id))
-      .where(eq(rosters.memberId, memberId))
+      .where(eq(rosters.memberId, targetMember.id))
       .groupBy(
         rosters.id,
         players.id,
@@ -166,6 +166,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       memberId: targetMember.id,
+      userId: targetMember.userId,
       teamName: targetMember.teamName,
       displayName: memberUser?.displayName || 'Unknown',
       players: shapedPlayers,

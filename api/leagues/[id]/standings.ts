@@ -84,6 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Map to StandingsEntry shape the frontend expects
     const result = standings.map((entry, index) => ({
       memberId: entry.memberId,
+      userId: entry.userId,
       teamName: entry.teamName,
       displayName: entry.displayName,
       playerCount: Number(entry.playerCount),

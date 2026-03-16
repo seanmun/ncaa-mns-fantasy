@@ -37,6 +37,7 @@ export interface PlayerWithStats extends PlayerWithTeam {
 
 export interface StandingsEntry {
   memberId: string;
+  userId: string;
   teamName: string;
   displayName: string;
   playerCount: number;

@@ -19,6 +19,7 @@ import BracketView from '@/components/bracket/BracketView';
 
 interface MemberRosterData {
   memberId: string;
+  userId: string;
   teamName: string;
   displayName: string;
   players: PlayerWithStats[];
@@ -75,7 +76,6 @@ export default function MemberRoster() {
   const { apiFetch } = useApi();
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState<Tab>('roster');
-  const isOwnRoster = user?.id === memberId;
   const locked = isRosterLocked();
 
   /* ---------- Fetch roster ---------- */
@@ -85,6 +85,7 @@ export default function MemberRoster() {
     enabled: !!id && !!memberId,
   });
 
+  const isOwnRoster = roster ? user?.id === roster.userId : false;
   const grouped = roster ? groupPlayersByTier(roster.players) : null;
 
   /* ---------------------------------------------------------------- */
