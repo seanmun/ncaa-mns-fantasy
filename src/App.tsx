@@ -2,8 +2,8 @@ import React, { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import {
   SignedIn,
-  SignedOut,
   SignUp,
+  useAuth,
 } from '@clerk/clerk-react';
 import { AnimatePresence } from 'framer-motion';
 import AppShell from './components/layout/AppShell';
@@ -41,14 +41,13 @@ function PrimarySignInRedirect() {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <SignedIn>{children}</SignedIn>
-      <SignedOut>
-        <PrimarySignInRedirect />
-      </SignedOut>
-    </>
-  );
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return null;
+  if (!isSignedIn) {
+    window.location.href = 'https://mnsfantasy.com/sign-in?redirect_url=https://ncaa.mnsfantasy.com/dashboard';
+    return null;
+  }
+  return <>{children}</>;
 }
 
 export default function App() {
