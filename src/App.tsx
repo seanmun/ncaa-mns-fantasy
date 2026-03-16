@@ -2,9 +2,9 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import {
   SignedIn,
-  SignedOut,
   RedirectToSignIn,
   SignUp,
+  useAuth,
 } from '@clerk/clerk-react';
 import { AnimatePresence } from 'framer-motion';
 import AppShell from './components/layout/AppShell';
@@ -33,14 +33,24 @@ function UserSync() {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <SignedIn>{children}</SignedIn>
-      <SignedOut>
-        <RedirectToSignIn />
-      </SignedOut>
-    </>
-  );
+  const { isLoaded, isSignedIn } = useAuth();
+
+  // Wait for Clerk to finish loading (including satellite session sync)
+  // before deciding whether to redirect. Without this, the satellite
+  // redirects to the primary domain before the session handshake completes.
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-primary">
+        <div className="w-8 h-8 border-2 border-neon-green border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return <RedirectToSignIn />;
+  }
+
+  return <>{children}</>;
 }
 
 export default function App() {
@@ -65,7 +75,7 @@ export default function App() {
             path="/sign-up/*"
             element={
               <div className="min-h-screen flex items-center justify-center bg-bg-primary">
-                <SignUp routing="path" path="/sign-up" afterSignUpUrl="/dashboard" />
+                <SignUp routing="path" path="/sign-up" fallbackRedirectUrl="/dashboard" />
               </div>
             }
           />
