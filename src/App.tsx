@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import {
   SignedIn,
+  SignedOut,
+  RedirectToSignIn,
   SignUp,
-  useAuth,
 } from '@clerk/clerk-react';
 import { AnimatePresence } from 'framer-motion';
 import AppShell from './components/layout/AppShell';
@@ -31,28 +32,15 @@ function UserSync() {
   return null;
 }
 
-function PrimarySignInRedirect() {
-  useEffect(() => {
-    window.location.href =
-      'https://mnsfantasy.com/sign-in?redirect_url=' +
-      encodeURIComponent(window.location.href);
-  }, []);
-  return null;
-}
-
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isLoaded, isSignedIn } = useAuth();
-
-  useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      window.location.href =
-        'https://mnsfantasy.com/sign-in?redirect_url=' +
-        encodeURIComponent(window.location.href);
-    }
-  }, [isLoaded, isSignedIn]);
-
-  if (!isLoaded || !isSignedIn) return null;
-  return <>{children}</>;
+  return (
+    <>
+      <SignedIn>{children}</SignedIn>
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
+    </>
+  );
 }
 
 export default function App() {
@@ -71,7 +59,7 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route
             path="/sign-in/*"
-            element={<PrimarySignInRedirect />}
+            element={<RedirectToSignIn />}
           />
           <Route
             path="/sign-up/*"
