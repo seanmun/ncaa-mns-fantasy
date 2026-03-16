@@ -1,13 +1,13 @@
+import React, { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import {
   SignedIn,
   SignedOut,
-  RedirectToSignIn,
-  SignIn,
   SignUp,
 } from '@clerk/clerk-react';
 import { AnimatePresence } from 'framer-motion';
 import AppShell from './components/layout/AppShell';
+import Footer from './components/layout/Footer';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import CreateLeague from './pages/CreateLeague';
@@ -18,6 +18,9 @@ import MemberRoster from './pages/MemberRoster';
 import AdminPanel from './pages/AdminPanel';
 import Settings from './pages/Settings';
 import Media from './pages/Media';
+import About from './pages/About';
+import Privacy from './pages/Privacy';
+import Changelog from './pages/Changelog';
 import NotFound from './pages/NotFound';
 import OnboardingModal from './components/ui/OnboardingModal';
 import { useUserSync } from './hooks/useUserSync';
@@ -28,12 +31,21 @@ function UserSync() {
   return null;
 }
 
+function PrimarySignInRedirect() {
+  useEffect(() => {
+    window.location.href =
+      'https://mnsfantasy.com/sign-in?redirect_url=' +
+      encodeURIComponent(window.location.href);
+  }, []);
+  return null;
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return (
     <>
       <SignedIn>{children}</SignedIn>
       <SignedOut>
-        <RedirectToSignIn />
+        <PrimarySignInRedirect />
       </SignedOut>
     </>
   );
@@ -41,24 +53,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <>
+    <div className="min-h-screen flex flex-col bg-bg-primary">
       {/* Sync Clerk user to DB + show onboarding modal for new users */}
       <SignedIn>
         <UserSync />
         <OnboardingModal />
       </SignedIn>
 
+      <div className="flex-1">
       <AnimatePresence mode="wait">
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<Landing />} />
           <Route
             path="/sign-in/*"
-            element={
-              <div className="min-h-screen flex items-center justify-center bg-bg-primary">
-                <SignIn routing="path" path="/sign-in" afterSignInUrl="/dashboard" />
-              </div>
-            }
+            element={<PrimarySignInRedirect />}
           />
           <Route
             path="/sign-up/*"
@@ -70,6 +79,9 @@ export default function App() {
           />
           <Route path="/join/:inviteCode" element={<JoinLeague />} />
           <Route path="/media" element={<Media />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/changelog" element={<Changelog />} />
 
           {/* Protected routes inside AppShell */}
           <Route
@@ -92,6 +104,9 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>
-    </>
+      </div>
+
+      <Footer />
+    </div>
   );
 }

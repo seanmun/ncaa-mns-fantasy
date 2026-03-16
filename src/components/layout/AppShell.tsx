@@ -1,6 +1,5 @@
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
-import Footer from './Footer';
 import BottomNav from './BottomNav';
 
 export default function AppShell() {
@@ -14,9 +13,6 @@ export default function AppShell() {
           <Outlet />
         </div>
       </main>
-
-      {/* Desktop footer */}
-      <Footer />
 
       {/* Mobile bottom navigation */}
       <BottomNav />
