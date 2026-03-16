@@ -17,7 +17,7 @@ interface TourneyTeam {
  * POST /api/admin/import-players
  *
  * Two-step SportsRadar import (admin-only):
- *   step=teams   → scrapes tournament schedule for 68 teams with seeds + regions
+ *   step=teams   → fetches tournament schedule for all 68 teams with seeds + regions
  *   step=players → fetches season stats per team, upserts players (batched)
  *
  * Query params:
@@ -61,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Step 1: Import 68 tournament teams from bracket schedule            */
+/*  Step 1: Import all 68 tournament teams from bracket schedule       */
 /* ------------------------------------------------------------------ */
 
 async function importTeams(
@@ -71,55 +71,65 @@ async function importTeams(
 ) {
   const tourneyYear = process.env.TOURNAMENT_YEAR || '2026';
 
-  // Fetch game schedules for tournament week to collect all 68 teams
-  // First Four + Round of 64 covers all teams
+  // First Four: Tue Mar 17 + Wed Mar 18
+  // Round of 64: Thu Mar 19 + Fri Mar 20
+  // Round of 32: Sat Mar 21 + Sun Mar 22
   const dates = [
     `${tourneyYear}/03/17`,
     `${tourneyYear}/03/18`,
     `${tourneyYear}/03/19`,
     `${tourneyYear}/03/20`,
     `${tourneyYear}/03/21`,
+    `${tourneyYear}/03/22`,
   ];
 
   const teams = new Map<string, TourneyTeam>();
+  const errors: string[] = [];
 
   for (const date of dates) {
-    // Respect rate limit
-    if (teams.size > 0) {
-      await new Promise((r) => setTimeout(r, 1100));
-    }
+    // Respect SportsRadar trial rate limit (1 req/sec)
+    await new Promise((r) => setTimeout(r, 1200));
 
-    const schedRes = await fetch(
-      `${baseUrl}/games/${date}/schedule.json?api_key=${apiKey}`
-    );
+    try {
+      const schedRes = await fetch(
+        `${baseUrl}/games/${date}/schedule.json?api_key=${apiKey}`
+      );
 
-    if (!schedRes.ok) {
-      console.error(`Schedule API error for ${date}: ${schedRes.status}`);
-      continue;
-    }
-
-    const data = await schedRes.json();
-
-    for (const game of data.games || []) {
-      const title: string = game.title || '';
-      // Extract region from title like "South Regional - First Round - Game 3"
-      const regionMatch = title.match(/^(\w+)\s+Regional/);
-      const region = regionMatch ? regionMatch[1] : 'TBD';
-
-      for (const side of ['home', 'away'] as const) {
-        const t = game[side];
-        if (!t?.id || teams.has(t.id)) continue;
-        // Skip the TBD placeholder team
-        if (t.alias === 'TBD') continue;
-
-        teams.set(t.id, {
-          id: t.id,
-          name: `${t.market || ''} ${t.name || ''}`.trim(),
-          alias: t.alias || '',
-          seed: t.seed ?? 0,
-          region,
-        });
+      if (!schedRes.ok) {
+        const msg = `Schedule API error for ${date}: ${schedRes.status}`;
+        console.error(msg);
+        errors.push(msg);
+        continue;
       }
+
+      const data = await schedRes.json();
+
+      for (const game of data.games || []) {
+        const title: string = game.title || '';
+        // Extract region from titles like "East Regional - First Round - Game 2"
+        // Also handles "Midwest Regional", "South Regional", "West Regional"
+        const regionMatch = title.match(/^(\w+)\s+Regional/);
+        const region = regionMatch ? regionMatch[1] : 'TBD';
+
+        for (const side of ['home', 'away'] as const) {
+          const t = game[side];
+          if (!t?.id || teams.has(t.id)) continue;
+          // Skip TBD placeholder teams and First Four winner placeholders
+          if (t.alias === 'TBD' || !t.alias) continue;
+
+          teams.set(t.id, {
+            id: t.id,
+            name: `${t.market || ''} ${t.name || ''}`.trim(),
+            alias: t.alias || '',
+            seed: t.seed ?? 0,
+            region,
+          });
+        }
+      }
+    } catch (err) {
+      const msg = `Failed to fetch schedule for ${date}: ${err}`;
+      console.error(msg);
+      errors.push(msg);
     }
   }
 
@@ -130,32 +140,33 @@ async function importTeams(
         teamsInserted: 0,
         teamsUpdated: 0,
         totalProcessed: 0,
+        errors,
       },
     });
   }
-
-  // First Four teams: assign region based on their Round of 64 matchup seed
-  // For now, First Four teams keep region 'TBD' — they'll get the real region
-  // once their Round of 64 game appears in the schedule
 
   let teamsInserted = 0;
   let teamsUpdated = 0;
 
   for (const team of teams.values()) {
     const [existing] = await db
-      .select({ id: ncaaTeams.id })
+      .select({ id: ncaaTeams.id, region: ncaaTeams.region })
       .from(ncaaTeams)
       .where(eq(ncaaTeams.sportRadarTeamId, team.id))
       .limit(1);
 
     if (existing) {
+      // Don't overwrite a real region with TBD
+      const newRegion =
+        team.region !== 'TBD' ? team.region : existing.region || 'TBD';
+
       await db
         .update(ncaaTeams)
         .set({
           name: team.name,
           shortName: team.alias,
           seed: team.seed,
-          region: team.region,
+          region: newRegion,
         })
         .where(eq(ncaaTeams.id, existing.id));
       teamsUpdated++;
@@ -178,6 +189,7 @@ async function importTeams(
       teamsInserted,
       teamsUpdated,
       totalProcessed: teamsInserted + teamsUpdated,
+      errors,
     },
   });
 }
@@ -193,6 +205,8 @@ async function importPlayers(
   batchSize: number,
   offset: number
 ) {
+  const tourneyYear = process.env.TOURNAMENT_YEAR || '2026';
+
   // Get teams from DB that have a SportsRadar ID
   const allTeams = await db
     .select({
@@ -224,14 +238,14 @@ async function importPlayers(
   let teamsErrored = 0;
 
   for (const team of batch) {
-    // Respect SportsRadar trial rate limit (~1 req/sec)
+    // Respect SportsRadar trial rate limit (1 req/sec)
     if (teamsProcessed > 0) {
-      await new Promise((resolve) => setTimeout(resolve, 1100));
+      await new Promise((resolve) => setTimeout(resolve, 1200));
     }
 
     try {
       const statsRes = await fetch(
-        `${baseUrl}/seasons/2025/REG/teams/${team.sportRadarTeamId}/statistics.json?api_key=${apiKey}`
+        `${baseUrl}/seasons/${tourneyYear}/REG/teams/${team.sportRadarTeamId}/statistics.json?api_key=${apiKey}`
       );
 
       if (!statsRes.ok) {

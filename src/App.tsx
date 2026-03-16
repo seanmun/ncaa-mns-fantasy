@@ -17,6 +17,7 @@ import PickRoster from './pages/PickRoster';
 import MemberRoster from './pages/MemberRoster';
 import AdminPanel from './pages/AdminPanel';
 import Settings from './pages/Settings';
+import Media from './pages/Media';
 import NotFound from './pages/NotFound';
 import OnboardingModal from './components/ui/OnboardingModal';
 import { useUserSync } from './hooks/useUserSync';
@@ -68,6 +69,7 @@ export default function App() {
             }
           />
           <Route path="/join/:inviteCode" element={<JoinLeague />} />
+          <Route path="/media" element={<Media />} />
 
           {/* Protected routes inside AppShell */}
           <Route

@@ -25,6 +25,7 @@
     "drizzle-orm": "^0.30",
     "framer-motion": "^11",
     "howler": "^2.2",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.400",
     "nanoid": "^5",
     "papaparse": "^5.4",
