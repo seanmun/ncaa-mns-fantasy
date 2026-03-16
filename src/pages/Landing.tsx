@@ -135,7 +135,7 @@ export default function Landing() {
           <source src="/videos/bracket.mp4" type="video/mp4" />
         </video>
         {/* Heavy dark overlay — video is subtle background texture */}
-        <div className="absolute inset-0 bg-[rgba(8,11,16,0.85)]" />
+        <div className="absolute inset-0 bg-[rgba(8,11,16,0.75)]" />
         {/* Bottom fade into page background */}
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#080b10] to-transparent" />
         {/* Hero content — above video */}
