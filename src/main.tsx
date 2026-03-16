@@ -27,6 +27,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       isSatellite
       domain="mnsfantasy.com"
       signInUrl="https://mnsfantasy.com/sign-in"
+      afterSignOutUrl="https://mnsfantasy.com"
     >
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>

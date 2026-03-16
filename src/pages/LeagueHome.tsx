@@ -22,7 +22,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import type { StandingsEntry, LeagueWithDetails } from '@/types';
-import { getPlatformUrl } from '@/lib/utils';
+import { getPlatformUrl, isRosterLocked } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -305,8 +305,8 @@ export default function LeagueHome() {
         </div>
 
         {/* ========== Sticky "Your Roster" button ========== */}
-        {league && !league.currentMemberRosterLocked && (
-          <div className="fixed bottom-20 left-0 right-0 z-30 flex justify-center px-4 sm:bottom-6">
+        {league && !isRosterLocked() && !league.currentMemberRosterLocked && (
+          <div className="fixed bottom-[76px] left-0 right-0 z-30 flex justify-center px-4 md:bottom-6">
             <Link to={`/leagues/${id}/pick`}>
               <Button variant="primary" size="lg" className="shadow-xl">
                 Your Roster

@@ -1,7 +1,7 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '@/hooks/useApi';
 import { PlayerCard } from '@/components/player/PlayerCard';
 import PageTransition from '@/components/layout/PageTransition';
@@ -12,6 +12,7 @@ import {
   type RosterPickState,
 } from '@/types';
 import {
+  cn,
   isRosterLocked,
   getProjectedScore,
   getRosterLockDate,
@@ -21,7 +22,7 @@ import { format } from 'date-fns';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Lock, Search, X } from 'lucide-react';
+import { Check, Lock, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 
 /* ------------------------------------------------------------------ */
@@ -73,6 +74,16 @@ export default function PickRoster() {
     4: '',
   });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [activeTier, setActiveTier] = useState(1);
+  const [sortMode, setSortMode] = useState<Record<number, 'projected' | 'team'>>({
+    1: 'projected',
+    2: 'projected',
+    3: 'projected',
+    4: 'projected',
+  });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const hasPrePopulated = useRef(false);
+  const queryClient = useQueryClient();
 
   // ---- Data fetching -----------------------------------------------------
   const {
@@ -96,10 +107,28 @@ export default function PickRoster() {
     enabled: !!leagueId && !!user?.id,
   });
 
+  // ---- Pre-populate picks from existing roster ----------------------------
+  useEffect(() => {
+    if (
+      existingRoster?.players?.length &&
+      !hasPrePopulated.current &&
+      !isRosterLocked()
+    ) {
+      hasPrePopulated.current = true;
+      setIsEditMode(true);
+
+      const newPicks: RosterPickState = { tier1: [], tier2: [], tier3: [], tier4: [] };
+      for (const player of existingRoster.players) {
+        const tierInfo = getTierForSeed(player.team.seed);
+        const key = `tier${tierInfo.tier}` as keyof RosterPickState;
+        newPicks[key].push(player);
+      }
+      setPicks(newPicks);
+    }
+  }, [existingRoster]);
+
   // ---- Derived state -----------------------------------------------------
   const locked = isRosterLocked();
-  const hasExistingRoster =
-    existingRoster && existingRoster.players && existingRoster.players.length > 0;
 
   // Compute the "hot" threshold: top 10% projected score across ALL players
   const hotThreshold = useMemo(() => {
@@ -118,16 +147,20 @@ export default function PickRoster() {
       const tier = getTierForSeed(player.team.seed);
       map[tier.tier]?.push(player);
     }
-    // Sort each tier by projected score descending
+    // Sort each tier based on current sort mode
     for (const tier of [1, 2, 3, 4]) {
-      map[tier].sort(
-        (a, b) =>
-          getProjectedScore(b.avgPts, b.avgReb, b.avgAst) -
-          getProjectedScore(a.avgPts, a.avgReb, a.avgAst),
-      );
+      if (sortMode[tier] === 'team') {
+        map[tier].sort((a, b) => a.team.name.localeCompare(b.team.name));
+      } else {
+        map[tier].sort(
+          (a, b) =>
+            getProjectedScore(b.avgPts, b.avgReb, b.avgAst) -
+            getProjectedScore(a.avgPts, a.avgReb, a.avgAst),
+        );
+      }
     }
     return map;
-  }, [allPlayers]);
+  }, [allPlayers, sortMode]);
 
   // Filtered players per tier
   const filteredPlayersByTier = useMemo(() => {
@@ -213,6 +246,13 @@ export default function PickRoster() {
       // Check if this tier is now complete
       if (newPicks.length === tierConfig.picks) {
         playDing();
+        // Auto-advance to next incomplete tier
+        const nextTier = SEED_TIERS.find(
+          (t) => t.tier > tier && picks[tierKey(t.tier)].length < t.picks
+        );
+        if (nextTier) {
+          setTimeout(() => setActiveTier(nextTier.tier), 300);
+        }
       }
     },
     [picks],
@@ -242,8 +282,10 @@ export default function PickRoster() {
       });
 
       playSuccess();
-      toast.success('Roster confirmed! Good luck in the tournament.');
+      toast.success(isEditMode ? 'Roster updated! Good luck in the tournament.' : 'Roster confirmed! Good luck in the tournament.');
       setShowConfirmModal(false);
+      queryClient.invalidateQueries({ queryKey: ['roster', leagueId] });
+      queryClient.invalidateQueries({ queryKey: ['standings', leagueId] });
 
       // Navigate after a brief pause so the user sees the confetti
       setTimeout(() => {
@@ -259,28 +301,33 @@ export default function PickRoster() {
   if (playersLoading || rosterLoading) {
     return (
       <PageTransition>
-        <div className="mx-auto max-w-5xl space-y-8 px-4 pb-32 pt-8">
-          {/* Sticky bar skeleton */}
-          <div className="h-12 rounded-lg bg-bg-card animate-pulse" />
-          {[1, 2, 3, 4].map((t) => (
-            <div key={t} className="space-y-4">
+        <div className="mx-auto max-w-5xl space-y-6 px-4 pb-32 pt-8">
+          <div className="flex gap-2">
+            {[1, 2, 3, 4].map((t) => (
+              <div key={t} className="h-10 flex-1 rounded-lg bg-bg-card animate-pulse" />
+            ))}
+          </div>
+          <div className="flex gap-6">
+            <div className="flex-1 space-y-4">
               <div className="h-8 w-64 rounded bg-bg-card animate-pulse" />
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: t === 1 ? 6 : t === 4 ? 3 : 4 }).map(
-                  (_, i) => (
-                    <CardSkeleton key={i} lines={3} />
-                  ),
-                )}
+              <div className="h-10 rounded-lg bg-bg-card animate-pulse" />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <CardSkeleton key={i} lines={3} />
+                ))}
               </div>
             </div>
-          ))}
+            <div className="hidden lg:block lg:w-72 shrink-0">
+              <div className="h-64 rounded-xl bg-bg-card animate-pulse" />
+            </div>
+          </div>
         </div>
       </PageTransition>
     );
   }
 
   // ---- Locked / read-only state ------------------------------------------
-  if (locked || hasExistingRoster) {
+  if (locked) {
     const rosterPlayers = existingRoster?.players ?? [];
     const groupedByTier: Record<number, PlayerWithTeam[]> = {
       1: [],
@@ -296,7 +343,6 @@ export default function PickRoster() {
     return (
       <PageTransition>
         <div className="mx-auto max-w-5xl space-y-8 px-4 pb-16 pt-8">
-          {/* Locked badge */}
           <div className="flex items-center justify-center gap-2 rounded-xl border border-neon-red/30 bg-neon-red/10 px-6 py-3">
             <Lock className="h-5 w-5 text-neon-red" />
             <span className="font-display text-lg tracking-wide text-neon-red">
@@ -304,7 +350,6 @@ export default function PickRoster() {
             </span>
           </div>
 
-          {/* Show existing picks by tier */}
           {SEED_TIERS.map((tierConfig) => {
             const tierPlayers = groupedByTier[tierConfig.tier];
             if (tierPlayers.length === 0) return null;
@@ -334,7 +379,6 @@ export default function PickRoster() {
             );
           })}
 
-          {/* Projected total */}
           {rosterPlayers.length > 0 && (
             <div className="text-center">
               <p className="text-sm text-text-muted">Projected Total</p>
@@ -354,113 +398,123 @@ export default function PickRoster() {
     );
   }
 
+  // ---- Active tier data ---------------------------------------------------
+  const activeTierConfig = SEED_TIERS.find((t) => t.tier === activeTier)!;
+  const activeTierCount = pickCount(activeTier);
+  const activeTierFull = activeTierCount >= activeTierConfig.picks;
+  const activeTierPlayers = filteredPlayersByTier[activeTier];
+
   // ---- Main pick interface -----------------------------------------------
   return (
     <PageTransition>
-      <div className="relative mx-auto max-w-5xl pb-44">
+      <div className="relative mx-auto max-w-5xl pb-40 md:pb-28">
         {/* ============================================================= */}
-        {/*  TOP STICKY BAR — Pick progress                               */}
+        {/*  TOP STICKY BAR — Tier Navigation Tabs                        */}
         {/* ============================================================= */}
         <div className="sticky top-16 z-40 border-b border-bg-border bg-bg-secondary/95 backdrop-blur-sm">
-          <div className="mx-auto flex items-center justify-between gap-2 px-4 py-3">
-            <div className="flex flex-wrap items-center gap-3 text-sm">
+          <div className="mx-auto max-w-5xl px-4">
+            <div className="flex items-center gap-1">
               {SEED_TIERS.map((tierConfig) => {
                 const count = pickCount(tierConfig.tier);
                 const complete = count === tierConfig.picks;
+                const isActive = activeTier === tierConfig.tier;
+
                 return (
-                  <div key={tierConfig.tier} className="flex items-center gap-1">
-                    {complete ? (
-                      <Check
-                        className={`h-4 w-4 ${TIER_TEXT_COLOR[tierConfig.tier]}`}
-                      />
-                    ) : null}
-                    <span
-                      className={`font-mono ${TIER_TEXT_COLOR[tierConfig.tier]} ${complete ? 'opacity-100' : 'opacity-70'}`}
-                    >
-                      T{tierConfig.tier}:{' '}
-                      <span className="font-bold">{count}</span>/
-                      {tierConfig.picks}
-                    </span>
-                  </div>
+                  <button
+                    key={tierConfig.tier}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setActiveTier(tierConfig.tier);
+                    }}
+                    className={cn(
+                      'flex-1 py-3 text-center text-sm font-semibold transition-all duration-200 border-b-2',
+                      isActive
+                        ? `${TIER_TEXT_COLOR[tierConfig.tier]} border-current`
+                        : 'text-text-muted border-transparent hover:text-text-secondary',
+                      complete && !isActive && 'text-text-secondary',
+                    )}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      {complete && <Check className="h-3.5 w-3.5" />}
+                      <span className="hidden sm:inline">{tierConfig.label}</span>
+                      <span className="sm:hidden">T{tierConfig.tier}</span>
+                      <span className="font-mono text-xs opacity-70">
+                        {count}/{tierConfig.picks}
+                      </span>
+                    </div>
+                  </button>
                 );
               })}
             </div>
-            <span className="shrink-0 font-mono text-sm text-text-secondary">
-              {totalPicks}/10
-            </span>
-          </div>
 
-          {/* Overall progress bar */}
-          <div className="h-0.5 w-full bg-bg-border">
-            <motion.div
-              className="h-full bg-neon-green"
-              initial={{ width: 0 }}
-              animate={{ width: `${(totalPicks / 10) * 100}%` }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            />
+            {/* Overall progress bar */}
+            <div className="h-0.5 w-full bg-bg-border">
+              <motion.div
+                className="h-full bg-neon-green"
+                initial={{ width: 0 }}
+                animate={{ width: `${(totalPicks / 10) * 100}%` }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              />
+            </div>
           </div>
         </div>
 
         {/* ============================================================= */}
-        {/*  TIER SECTIONS                                                 */}
+        {/*  MAIN CONTENT: Active tier + Desktop sidebar                   */}
         {/* ============================================================= */}
-        <div className="space-y-10 px-4 pt-6">
-          {SEED_TIERS.map((tierConfig) => {
-            const count = pickCount(tierConfig.tier);
-            const isTierFull = count >= tierConfig.picks;
-            const tierPlayers = filteredPlayersByTier[tierConfig.tier];
-
-            return (
-              <section key={tierConfig.tier}>
-                {/* Tier header */}
-                <div
-                  className={`mb-4 border-l-4 pl-4 ${TIER_BORDER_LEFT[tierConfig.tier]}`}
+        <div className="flex gap-6 px-4 pt-6">
+          {/* ---------- LEFT: Active tier content ---------- */}
+          <div className="flex-1 min-w-0">
+            <section>
+              {/* Tier header */}
+              <div className={`mb-4 border-l-4 pl-4 ${TIER_BORDER_LEFT[activeTier]}`}>
+                <h2
+                  className={`font-display text-xl tracking-wide sm:text-2xl ${TIER_TEXT_COLOR[activeTier]}`}
                 >
-                  <h2
-                    className={`font-display text-xl tracking-wide sm:text-2xl ${TIER_TEXT_COLOR[tierConfig.tier]}`}
+                  TIER {activeTier} &mdash; Seeds{' '}
+                  {activeTierConfig.seeds[0]}&ndash;
+                  {activeTierConfig.seeds[activeTierConfig.seeds.length - 1]}
+                </h2>
+                <p className="mt-0.5 text-sm text-text-secondary">
+                  Pick{' '}
+                  <span
+                    className={`font-mono font-bold ${TIER_TEXT_COLOR[activeTier]}`}
                   >
-                    TIER {tierConfig.tier} &mdash; Seeds{' '}
-                    {tierConfig.seeds[0]}&ndash;
-                    {tierConfig.seeds[tierConfig.seeds.length - 1]}
-                  </h2>
-                  <p className="mt-0.5 text-sm text-text-secondary">
-                    Pick{' '}
-                    <span
-                      className={`font-mono font-bold ${TIER_TEXT_COLOR[tierConfig.tier]}`}
-                    >
-                      {tierConfig.picks}
-                    </span>{' '}
-                    player{tierConfig.picks > 1 ? 's' : ''}
-                    {isTierFull && (
-                      <span className="ml-2 inline-flex items-center gap-1 text-xs text-neon-green">
-                        <Check className="h-3 w-3" /> Complete
-                      </span>
-                    )}
-                  </p>
-                </div>
+                    {activeTierConfig.picks}
+                  </span>{' '}
+                  player{activeTierConfig.picks > 1 ? 's' : ''}
+                  {activeTierFull && (
+                    <span className="ml-2 inline-flex items-center gap-1 text-xs text-neon-green">
+                      <Check className="h-3 w-3" /> Complete
+                    </span>
+                  )}
+                </p>
+              </div>
 
-                {/* Search filter */}
-                <div className="relative mb-4">
+              {/* Search + Sort row */}
+              <div className="mb-4 flex items-center gap-3">
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                   <input
                     type="text"
                     placeholder="Filter by team or player..."
-                    value={filters[tierConfig.tier]}
+                    value={filters[activeTier]}
                     onChange={(e) =>
                       setFilters((prev) => ({
                         ...prev,
-                        [tierConfig.tier]: e.target.value,
+                        [activeTier]: e.target.value,
                       }))
                     }
                     className="w-full rounded-lg border border-bg-border bg-bg-card py-2 pl-9 pr-9 text-sm text-text-primary placeholder-text-muted outline-none transition-colors focus:border-bg-card-hover focus:ring-1 focus:ring-neon-green/30"
                   />
-                  {filters[tierConfig.tier] && (
+                  {filters[activeTier] && (
                     <button
                       type="button"
                       onClick={() =>
                         setFilters((prev) => ({
                           ...prev,
-                          [tierConfig.tier]: '',
+                          [activeTier]: '',
                         }))
                       }
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted transition-colors hover:text-text-primary"
@@ -471,17 +525,57 @@ export default function PickRoster() {
                   )}
                 </div>
 
-                {/* Player grid */}
-                {tierPlayers.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-text-muted">
-                    No players match your filter.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <AnimatePresence mode="popLayout">
-                      {tierPlayers.map((player) => {
+                {/* Sort toggle */}
+                <div className="flex shrink-0 items-center rounded-lg border border-bg-border bg-bg-card">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSortMode((prev) => ({ ...prev, [activeTier]: 'projected' }))
+                    }
+                    className={cn(
+                      'px-3 py-2 text-xs font-semibold transition-colors rounded-l-lg',
+                      sortMode[activeTier] === 'projected'
+                        ? 'bg-neon-green/15 text-neon-green'
+                        : 'text-text-muted hover:text-text-secondary',
+                    )}
+                  >
+                    Points
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSortMode((prev) => ({ ...prev, [activeTier]: 'team' }))
+                    }
+                    className={cn(
+                      'px-3 py-2 text-xs font-semibold transition-colors rounded-r-lg',
+                      sortMode[activeTier] === 'team'
+                        ? 'bg-neon-green/15 text-neon-green'
+                        : 'text-text-muted hover:text-text-secondary',
+                    )}
+                  >
+                    Team
+                  </button>
+                </div>
+              </div>
+
+              {/* Player grid — single tier at a time */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTier}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {activeTierPlayers.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-text-muted">
+                      No players match your filter.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
+                      {activeTierPlayers.map((player) => {
                         const selected = isPlayerSelected(player.id);
-                        const disabled = isTierFull && !selected;
+                        const disabled = activeTierFull && !selected;
                         const projScore = getProjectedScore(
                           player.avgPts,
                           player.avgReb,
@@ -507,30 +601,153 @@ export default function PickRoster() {
                               isSelected={selected}
                               isDisabled={disabled}
                               isHot={hot}
-                              onPick={(p) =>
-                                handlePick(p, tierConfig.tier)
-                              }
-                              tier={tierConfig.tier as 1 | 2 | 3 | 4}
+                              onPick={(p) => handlePick(p, activeTier)}
+                              tier={activeTier as 1 | 2 | 3 | 4}
                             />
                           </motion.div>
                         );
                       })}
-                    </AnimatePresence>
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Prev / Next tier navigation */}
+              <div className="mt-6 flex items-center justify-between">
+                {activeTier > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setActiveTier((prev) => prev - 1);
+                    }}
+                    className="flex items-center gap-2 rounded-xl border border-bg-border bg-bg-card px-4 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-card-hover"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Tier {activeTier - 1}
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                {activeTier < 4 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      setActiveTier((prev) => prev + 1);
+                    }}
+                    className={cn(
+                      'flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors',
+                      activeTierFull
+                        ? `${TIER_BG_LOW[activeTier + 1]} ${TIER_TEXT_COLOR[activeTier + 1]} border border-transparent`
+                        : 'border border-bg-border bg-bg-card text-text-primary hover:bg-bg-card-hover',
+                    )}
+                  >
+                    Tier {activeTier + 1}
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <div />
+                )}
+              </div>
+            </section>
+          </div>
+
+          {/* ---------- RIGHT: Desktop sidebar — Selected picks ---------- */}
+          <div className="hidden lg:block lg:w-72 shrink-0">
+            <div className="sticky top-[140px]">
+              <div className="rounded-xl border border-bg-border bg-bg-card p-4 space-y-4">
+                <h3 className="font-display text-sm uppercase tracking-wider text-text-primary">
+                  Your Picks
+                  <span className="ml-2 font-mono text-xs text-text-muted">
+                    {totalPicks}/10
+                  </span>
+                </h3>
+
+                {SEED_TIERS.map((tierConfig) => {
+                  const tierPicks = picks[tierKey(tierConfig.tier)];
+                  const slots = tierConfig.picks;
+
+                  return (
+                    <div key={tierConfig.tier}>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTier(tierConfig.tier)}
+                        className={cn(
+                          'mb-1.5 text-xs font-semibold uppercase tracking-wider transition-colors hover:opacity-100',
+                          TIER_TEXT_COLOR[tierConfig.tier],
+                          activeTier === tierConfig.tier
+                            ? 'opacity-100'
+                            : 'opacity-60',
+                        )}
+                      >
+                        {tierConfig.label} ({tierPicks.length}/{slots})
+                      </button>
+
+                      <div className="space-y-1">
+                        {tierPicks.map((p) => (
+                          <div
+                            key={p.id}
+                            className={`flex items-center justify-between rounded-lg px-2 py-1.5 text-xs ${TIER_BG_LOW[tierConfig.tier]}`}
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="truncate text-text-primary">
+                                {p.name}
+                              </span>
+                              <span className="shrink-0 text-text-muted">
+                                {p.team.shortName}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handlePick(p, tierConfig.tier)}
+                              className="shrink-0 ml-1 opacity-50 hover:opacity-100 transition-opacity"
+                              aria-label={`Remove ${p.name}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+
+                        {/* Empty slot indicators */}
+                        {Array.from({ length: slots - tierPicks.length }).map(
+                          (_, i) => (
+                            <div
+                              key={`empty-${i}`}
+                              className="flex items-center rounded-lg border border-dashed border-bg-border px-2 py-1.5 text-xs text-text-muted"
+                            >
+                              Empty slot
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Projected total */}
+                {totalPicks > 0 && (
+                  <div className="border-t border-bg-border pt-3 text-center">
+                    <p className="text-xs text-text-muted">Projected Total</p>
+                    <p className="font-mono text-xl font-bold text-neon-green">
+                      {projectedTotal.toFixed(1)}
+                    </p>
                   </div>
                 )}
-              </section>
-            );
-          })}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* ============================================================= */}
         {/*  BOTTOM STICKY BAR                                             */}
         {/* ============================================================= */}
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-bg-border bg-bg-secondary/95 backdrop-blur-sm">
+        <div className="fixed inset-x-0 bottom-[60px] md:bottom-0 z-40 border-t border-bg-border bg-bg-secondary/95 backdrop-blur-sm">
           <div className="mx-auto max-w-5xl px-4 py-3">
-            {/* Pick chips row */}
+            {/* Pick chips row — mobile only */}
             {totalPicks > 0 && (
-              <div className="mb-2.5 flex flex-wrap gap-1.5">
+              <div className="mb-2.5 flex flex-wrap gap-1.5 lg:hidden">
                 {SEED_TIERS.map((tierConfig) =>
                   picks[tierKey(tierConfig.tier)].map((p) => (
                     <motion.span
@@ -543,9 +760,7 @@ export default function PickRoster() {
                       {p.name.split(' ').slice(-1)[0]}
                       <button
                         type="button"
-                        onClick={() =>
-                          handlePick(p, tierConfig.tier)
-                        }
+                        onClick={() => handlePick(p, tierConfig.tier)}
                         className="ml-0.5 opacity-60 transition-opacity hover:opacity-100"
                         aria-label={`Remove ${p.name}`}
                       >
@@ -576,13 +791,14 @@ export default function PickRoster() {
                   playClick();
                   setShowConfirmModal(true);
                 }}
-                className={`rounded-xl px-6 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                className={cn(
+                  'rounded-xl px-6 py-2.5 text-sm font-semibold transition-all duration-200',
                   allPicked
                     ? 'animate-pulse-neon bg-neon-green text-gray-900 shadow-[0_0_20px_rgba(0,255,135,0.4)]'
-                    : 'cursor-not-allowed bg-bg-card text-text-muted opacity-50'
-                }`}
+                    : 'cursor-not-allowed bg-bg-card text-text-muted opacity-50',
+                )}
               >
-                Confirm Roster
+                {isEditMode ? 'Update Roster' : 'Confirm Roster'}
               </button>
             </div>
           </div>
@@ -609,7 +825,7 @@ export default function PickRoster() {
                 className="w-full max-w-lg rounded-2xl border border-bg-border bg-bg-secondary p-6 shadow-2xl"
               >
                 <h2 className="mb-6 text-center font-display text-2xl tracking-wide text-text-primary">
-                  Confirm Your Roster
+                  {isEditMode ? 'Update Your Roster' : 'Confirm Your Roster'}
                 </h2>
 
                 {/* Picks organized by tier */}
@@ -665,10 +881,13 @@ export default function PickRoster() {
                   </p>
                 </div>
 
-                {/* Lock warning */}
-                <p className="mt-4 text-center text-xs text-neon-orange">
-                  Once confirmed, your roster cannot be changed after{' '}
-                  {format(getRosterLockDate(), 'MMM d, yyyy h:mm a')}.
+                {/* Lock info */}
+                <p className="mt-4 text-center text-xs text-text-secondary">
+                  You can edit your roster anytime before{' '}
+                  <span className="font-semibold text-neon-orange">
+                    {format(getRosterLockDate(), 'MMM d, yyyy h:mm a')}
+                  </span>
+                  .
                 </p>
 
                 {/* Buttons */}
@@ -686,7 +905,13 @@ export default function PickRoster() {
                     onClick={() => submitMutation.mutate()}
                     className="rounded-xl bg-neon-green px-5 py-2.5 text-sm font-semibold text-gray-900 transition-shadow hover:shadow-[0_0_20px_rgba(0,255,135,0.4)] disabled:opacity-50"
                   >
-                    {submitMutation.isPending ? 'Confirming...' : 'Confirm'}
+                    {submitMutation.isPending
+                      ? isEditMode
+                        ? 'Updating...'
+                        : 'Confirming...'
+                      : isEditMode
+                        ? 'Update'
+                        : 'Confirm'}
                   </button>
                 </div>
               </motion.div>
