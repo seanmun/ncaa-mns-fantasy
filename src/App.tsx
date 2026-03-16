@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, useSearchParams } from 'react-router-dom';
 import {
   SignedIn,
   RedirectToSignIn,
@@ -34,11 +34,26 @@ function UserSync() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [syncGrace, setSyncGrace] = useState(() =>
+    searchParams.has('__clerk_synced')
+  );
 
-  // Wait for Clerk to finish loading (including satellite session sync)
-  // before deciding whether to redirect. Without this, the satellite
-  // redirects to the primary domain before the session handshake completes.
-  if (!isLoaded) {
+  useEffect(() => {
+    // When __clerk_synced is in the URL, the user just completed the FAPI
+    // handshake. Give Clerk a brief window to establish the session before
+    // we decide to redirect to sign-in.
+    if (syncGrace && isLoaded && !isSignedIn) {
+      const timer = setTimeout(() => setSyncGrace(false), 2500);
+      return () => clearTimeout(timer);
+    }
+    if (isSignedIn) {
+      setSyncGrace(false);
+    }
+  }, [syncGrace, isLoaded, isSignedIn]);
+
+  // Show spinner while Clerk loads or while waiting for satellite sync
+  if (!isLoaded || syncGrace) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-bg-primary">
         <div className="w-8 h-8 border-2 border-neon-green border-t-transparent rounded-full animate-spin" />
