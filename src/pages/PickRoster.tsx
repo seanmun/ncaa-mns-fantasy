@@ -149,7 +149,14 @@ export default function PickRoster() {
     // Sort each tier based on current sort mode
     for (const tier of [1, 2, 3, 4]) {
       if (sortMode[tier] === 'team') {
-        map[tier].sort((a, b) => a.team.name.localeCompare(b.team.name));
+        // Sort by seed (best first), then by projected score within same team
+        map[tier].sort((a, b) => {
+          if (a.team.seed !== b.team.seed) return a.team.seed - b.team.seed;
+          return (
+            getProjectedScore(b.avgPts, b.avgReb, b.avgAst) -
+            getProjectedScore(a.avgPts, a.avgReb, a.avgAst)
+          );
+        });
       } else {
         map[tier].sort(
           (a, b) =>
@@ -385,8 +392,16 @@ export default function PickRoster() {
                             <span className="text-sm font-semibold text-text-primary truncate">
                               {player.name}
                             </span>
+                            {player.jersey && (
+                              <span className="shrink-0 font-mono text-[10px] text-text-muted">
+                                #{player.jersey}
+                              </span>
+                            )}
                             <span className="shrink-0 text-xs text-text-muted">
-                              {player.team.shortName}
+                              ({player.team.seed}) {player.team.shortName}
+                            </span>
+                            <span className="shrink-0 text-[10px] text-text-muted hidden sm:inline">
+                              {player.team.region}
                             </span>
                           </div>
                         </div>
@@ -615,8 +630,24 @@ export default function PickRoster() {
                         <span className="w-12 text-right">Proj</span>
                       </div>
 
-                      <div className="divide-y divide-bg-border/40 rounded-xl border border-bg-border bg-bg-card overflow-hidden">
-                        {activeTierPlayers.map((player) => {
+                      {(() => {
+                        // Group by team when in team sort mode
+                        const isTeamMode = sortMode[activeTier] === 'team';
+                        const teamSections: { teamId: string; teamName: string; seed: number; region: string; players: typeof activeTierPlayers }[] = [];
+
+                        if (isTeamMode) {
+                          const seen = new Map<string, typeof teamSections[0]>();
+                          for (const p of activeTierPlayers) {
+                            if (!seen.has(p.team.id)) {
+                              const section = { teamId: p.team.id, teamName: p.team.name, seed: p.team.seed, region: p.team.region, players: [] as typeof activeTierPlayers };
+                              seen.set(p.team.id, section);
+                              teamSections.push(section);
+                            }
+                            seen.get(p.team.id)!.players.push(p);
+                          }
+                        }
+
+                        const renderRow = (player: PlayerWithTeam) => {
                           const selected = isPlayerSelected(player.id);
                           const disabled = activeTierFull && !selected;
                           const projScore = getProjectedScore(
@@ -646,8 +677,18 @@ export default function PickRoster() {
                                   <span className="text-sm font-semibold text-text-primary truncate">
                                     {player.name}
                                   </span>
-                                  <span className="shrink-0 text-xs text-text-muted">
-                                    {player.team.shortName}
+                                  {player.jersey && (
+                                    <span className="shrink-0 font-mono text-[10px] text-text-muted">
+                                      #{player.jersey}
+                                    </span>
+                                  )}
+                                  {!isTeamMode && (
+                                    <span className="shrink-0 text-xs text-text-muted">
+                                      {player.team.shortName}
+                                    </span>
+                                  )}
+                                  <span className="shrink-0 text-[10px] text-text-muted hidden sm:inline">
+                                    {player.team.region}
                                   </span>
                                   {hot && (
                                     <span className="shrink-0 text-xs" aria-label="Hot pick">
@@ -677,8 +718,33 @@ export default function PickRoster() {
                               </span>
                             </button>
                           );
-                        })}
-                      </div>
+                        };
+
+                        if (isTeamMode) {
+                          return (
+                            <div className="space-y-3">
+                              {teamSections.map((section) => (
+                                <div key={section.teamId}>
+                                  <div className="flex items-center gap-2 px-3 py-1.5 text-xs">
+                                    <span className="font-mono font-bold text-text-muted">({section.seed})</span>
+                                    <span className="font-semibold text-text-primary">{section.teamName}</span>
+                                    <span className="text-text-muted">{section.region}</span>
+                                  </div>
+                                  <div className="divide-y divide-bg-border/40 rounded-xl border border-bg-border bg-bg-card overflow-hidden">
+                                    {section.players.map(renderRow)}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="divide-y divide-bg-border/40 rounded-xl border border-bg-border bg-bg-card overflow-hidden">
+                            {activeTierPlayers.map(renderRow)}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </motion.div>

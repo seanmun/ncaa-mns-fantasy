@@ -227,8 +227,16 @@ export default function MemberRoster() {
                                   >
                                     {player.name}
                                   </span>
+                                  {player.jersey && (
+                                    <span className="shrink-0 font-mono text-[10px] text-text-muted">
+                                      #{player.jersey}
+                                    </span>
+                                  )}
                                   <span className="shrink-0 text-xs text-text-muted">
-                                    {player.team.shortName}
+                                    ({player.team.seed}) {player.team.shortName}
+                                  </span>
+                                  <span className="shrink-0 text-[10px] text-text-muted hidden sm:inline">
+                                    {player.team.region}
                                   </span>
                                   {eliminated && (
                                     <span className="shrink-0 rounded-full bg-neon-red/15 px-1.5 py-0.5 text-[10px] font-semibold text-neon-red">
