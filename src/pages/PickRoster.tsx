@@ -454,6 +454,107 @@ export default function PickRoster() {
   const activeTierPlayers = filteredPlayersByTier[activeTier];
 
   // ---- Main pick interface -----------------------------------------------
+
+  // ---- Full-page confirmation view ---------------------------------------
+  if (showConfirmModal) {
+    return (
+      <PageTransition>
+        <div className="mx-auto max-w-lg px-4 py-8 pb-32">
+          <h1 className="text-center font-display text-2xl tracking-wide text-text-primary">
+            {isEditMode ? 'Update Your Roster' : 'Confirm Your Roster'}
+          </h1>
+
+          {/* Picks organized by tier */}
+          <div className="mt-8 space-y-6">
+            {SEED_TIERS.map((tierConfig) => {
+              const tierPicks = picks[tierKey(tierConfig.tier)];
+              if (tierPicks.length === 0) return null;
+              return (
+                <div key={tierConfig.tier}>
+                  <h3
+                    className={`mb-2 text-xs font-semibold uppercase tracking-wider ${TIER_TEXT_COLOR[tierConfig.tier]}`}
+                  >
+                    {tierConfig.label} &mdash; Seeds{' '}
+                    {tierConfig.seeds[0]}&ndash;
+                    {tierConfig.seeds[tierConfig.seeds.length - 1]}
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {tierPicks.map((p) => (
+                      <li
+                        key={p.id}
+                        className="flex items-center justify-between rounded-lg bg-bg-card px-4 py-3 text-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-text-primary font-medium">
+                            {p.name}
+                          </span>
+                          <span className="text-xs text-text-muted">
+                            {p.team.shortName}
+                          </span>
+                        </div>
+                        <span className="font-mono text-xs text-text-secondary">
+                          {getProjectedScore(
+                            p.avgPts,
+                            p.avgReb,
+                            p.avgAst,
+                          ).toFixed(1)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Projected total */}
+          <div className="mt-8 text-center">
+            <p className="text-xs uppercase tracking-wider text-text-muted">
+              Projected Total Score
+            </p>
+            <p className="mt-1 font-mono text-4xl font-bold text-neon-green">
+              {projectedTotal.toFixed(1)}
+            </p>
+          </div>
+
+          {/* Lock info */}
+          <p className="mt-4 text-center text-xs text-text-secondary">
+            You can edit your roster anytime before{' '}
+            <span className="font-semibold text-neon-orange">
+              {format(getRosterLockDate(), 'MMM d, yyyy h:mm a')}
+            </span>
+            .
+          </p>
+
+          {/* Buttons */}
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <button
+              type="button"
+              onClick={() => setShowConfirmModal(false)}
+              className="rounded-xl border border-bg-border bg-bg-card px-6 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-card-hover"
+            >
+              Go Back
+            </button>
+            <button
+              type="button"
+              disabled={submitMutation.isPending}
+              onClick={() => submitMutation.mutate()}
+              className="rounded-xl bg-neon-green px-6 py-3 text-sm font-semibold text-gray-900 transition-shadow hover:shadow-[0_0_20px_rgba(0,255,135,0.4)] disabled:opacity-50"
+            >
+              {submitMutation.isPending
+                ? isEditMode
+                  ? 'Updating...'
+                  : 'Confirming...'
+                : isEditMode
+                  ? 'Update Roster'
+                  : 'Confirm Roster'}
+            </button>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
+
   return (
     <PageTransition>
       <div className="relative mx-auto max-w-5xl pb-40 md:pb-28">
@@ -1080,120 +1181,6 @@ export default function PickRoster() {
           </div>
         </div>
 
-        {/* ============================================================= */}
-        {/*  CONFIRMATION MODAL                                            */}
-        {/* ============================================================= */}
-        <AnimatePresence>
-          {showConfirmModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4"
-              onClick={() => setShowConfirmModal(false)}
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.92, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.92, y: 20 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl border border-bg-border bg-bg-secondary p-6 shadow-2xl pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
-              >
-                <h2 className="mb-6 text-center font-display text-2xl tracking-wide text-text-primary">
-                  {isEditMode ? 'Update Your Roster' : 'Confirm Your Roster'}
-                </h2>
-
-                {/* Picks organized by tier */}
-                <div className="space-y-4">
-                  {SEED_TIERS.map((tierConfig) => {
-                    const tierPicks = picks[tierKey(tierConfig.tier)];
-                    if (tierPicks.length === 0) return null;
-                    return (
-                      <div key={tierConfig.tier}>
-                        <h3
-                          className={`mb-1.5 text-xs font-semibold uppercase tracking-wider ${TIER_TEXT_COLOR[tierConfig.tier]}`}
-                        >
-                          {tierConfig.label} &mdash; Seeds{' '}
-                          {tierConfig.seeds[0]}&ndash;
-                          {tierConfig.seeds[tierConfig.seeds.length - 1]}
-                        </h3>
-                        <ul className="space-y-1">
-                          {tierPicks.map((p) => (
-                            <li
-                              key={p.id}
-                              className="flex items-center justify-between rounded-lg bg-bg-card px-3 py-2 text-sm"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-text-primary">
-                                  {p.name}
-                                </span>
-                                <span className="text-xs text-text-muted">
-                                  {p.team.shortName}
-                                </span>
-                              </div>
-                              <span className="font-mono text-xs text-text-secondary">
-                                {getProjectedScore(
-                                  p.avgPts,
-                                  p.avgReb,
-                                  p.avgAst,
-                                ).toFixed(1)}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Projected total */}
-                <div className="mt-6 text-center">
-                  <p className="text-xs uppercase tracking-wider text-text-muted">
-                    Projected Total Score
-                  </p>
-                  <p className="mt-1 font-mono text-3xl font-bold text-neon-green">
-                    {projectedTotal.toFixed(1)}
-                  </p>
-                </div>
-
-                {/* Lock info */}
-                <p className="mt-4 text-center text-xs text-text-secondary">
-                  You can edit your roster anytime before{' '}
-                  <span className="font-semibold text-neon-orange">
-                    {format(getRosterLockDate(), 'MMM d, yyyy h:mm a')}
-                  </span>
-                  .
-                </p>
-
-                {/* Buttons */}
-                <div className="mt-6 flex items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmModal(false)}
-                    className="rounded-xl border border-bg-border bg-bg-card px-5 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-card-hover"
-                  >
-                    Go Back
-                  </button>
-                  <button
-                    type="button"
-                    disabled={submitMutation.isPending}
-                    onClick={() => submitMutation.mutate()}
-                    className="rounded-xl bg-neon-green px-5 py-2.5 text-sm font-semibold text-gray-900 transition-shadow hover:shadow-[0_0_20px_rgba(0,255,135,0.4)] disabled:opacity-50"
-                  >
-                    {submitMutation.isPending
-                      ? isEditMode
-                        ? 'Updating...'
-                        : 'Confirming...'
-                      : isEditMode
-                        ? 'Update'
-                        : 'Confirm'}
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </PageTransition>
   );
