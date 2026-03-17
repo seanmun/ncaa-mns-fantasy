@@ -26,6 +26,7 @@ import Changelog from './pages/Changelog';
 import NotFound from './pages/NotFound';
 import OnboardingModal from './components/ui/OnboardingModal';
 import { useUserSync } from './hooks/useUserSync';
+import { Analytics } from '@vercel/analytics/react';
 
 // Syncs Clerk user → local DB users table on sign-in
 function UserSync() {
@@ -111,6 +112,7 @@ export default function App() {
       </div>
 
       <Footer />
+      <Analytics />
     </div>
   );
 }

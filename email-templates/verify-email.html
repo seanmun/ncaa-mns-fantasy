@@ -1,0 +1,47 @@
+<re-html>
+<re-head>
+    <re-title>
+        Verify your email address
+    </re-title>
+</re-head>
+<re-body background-color="#080b10" padding="48px 16px">
+    <re-preheader>
+        Use the following link to verify your email address to {{app.name}}
+    </re-preheader>
+    <re-header padding="16px 32px 8px 32px">
+        <re-text font-size="20px" font-weight="bold" line-height="26px" color="#f0f4f8">
+            <span style="color: #ffffff;">MNS</span><span style="color: #00ff87;">FANTASY</span>
+        </re-text>
+    </re-header>
+    <re-main background-color="#080b10" border-radius="0px">
+        <re-block border-radius="12px" align="left" padding="32px" background-color="#111827" font-size="14px" margin="24px 0px 0px 0px" border="1px solid #1f2937">
+            <re-heading margin="0px 0px 0px 0px" level="h1" align="left" color="#f0f4f8" font-size="24px" line-height="32px">
+                Verify your email address
+            </re-heading>
+            <re-text margin="16px 0px 0px 0px" align="left" font-size="14px" color="#8b949e">
+                Click the button below to verify your email address. This link will expire in {{ttl_minutes}} minutes.
+            </re-text>
+            <re-button padding="10px 24px" href="{{magic_link}}" font-size="14px" font-weight="bold" border-radius="12px" margin="32px 0px 0px 0px" background-color="#00ff87" color="#080b10">
+                Verify your email address
+            </re-button>
+            <re-text margin="24px 0px 0px 0px" font-size="13px" color="#8b949e">
+                If you're having trouble with the button, <a href="{{magic_link}}" style="color: #00ff87; text-decoration: underline;">click here</a>.
+            </re-text>
+        </re-block>
+        <re-block border-radius="12px" align="left" padding="24px 32px" background-color="#0d1117" font-size="14px" margin="16px 0px 0px 0px" border="1px solid #1f2937">
+            <re-text color="#8b949e" font-size="13px">
+                <b style="color: #f0f4f8;">Didn't request this?</b>
+            </re-text>
+            <re-text font-size="13px" margin="8px 0px 0px 0px" color="#8b949e">
+                This verification link was requested from <b style="color: #f0f4f8;">{{requested_from}}</b> at <b style="color: #f0f4f8;">{{requested_at}}</b>. If you didn't make this request, you can safely ignore this email.
+            </re-text>
+        </re-block>
+    </re-main>
+    <re-footer padding="24px 32px 48px">
+        <re-divider background-color="#1f2937" height="1px"></re-divider>
+        <re-text margin="16px 0px 0px 0px" font-size="12px" color="#8b949e">
+            &copy; {{current_year}} {{app.name}}
+        </re-text>
+    </re-footer>
+</re-body>
+</re-html>

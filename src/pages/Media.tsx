@@ -1,6 +1,6 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Download } from 'lucide-react';
+import { ChevronLeft, Download, Copy, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /* ------------------------------------------------------------------ */
@@ -10,7 +10,7 @@ async function downloadAd(node: HTMLElement, filename: string) {
   const { default: html2canvas } = await import('html2canvas');
   const canvas = await html2canvas(node, {
     backgroundColor: null,
-    scale: 3, // retina-quality
+    scale: 2, // high-quality, smaller file size
     useCORS: true,
   });
   const link = document.createElement('a');
@@ -50,6 +50,43 @@ function AdCard({
         <Download className="w-4 h-4" />
         Save as PNG
       </button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Caption block – copyable tweet / TikTok text below each ad         */
+/* ------------------------------------------------------------------ */
+function CaptionBlock({ captions }: { captions: string[] }) {
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+
+  const handleCopy = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIdx(idx);
+    setTimeout(() => setCopiedIdx(null), 2000);
+  };
+
+  return (
+    <div className="mt-4 w-full max-w-[390px] flex flex-col gap-2">
+      <span className="font-mono text-[10px] tracking-widest uppercase text-text-muted">
+        Suggested captions
+      </span>
+      {captions.map((text, idx) => (
+        <button
+          key={idx}
+          onClick={() => handleCopy(text, idx)}
+          className="group relative rounded-lg border border-bg-border bg-bg-card px-4 py-3 text-left transition-colors hover:bg-bg-card-hover"
+        >
+          <p className="font-body text-sm text-text-secondary pr-8 whitespace-pre-line">{text}</p>
+          <span className="absolute right-3 top-3 text-text-muted group-hover:text-text-secondary transition-colors">
+            {copiedIdx === idx ? (
+              <Check className="w-4 h-4 text-neon-green" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
+          </span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -1190,17 +1227,17 @@ function AdRoster() {
 }
 
 /* ================================================================== */
-/*  AD 11 — ROSTER DRAFT STRATEGY                                      */
+/*  AD 11 — ROSTER CONSTRUCTION                                        */
 /*  Hook: Show the strategic tier trade-offs with example roster        */
 /* ================================================================== */
-function AdDraftStrategy() {
+function AdRosterConstruction() {
   return (
-    <AdCard id="ad-draft-strategy" filename="mns-ad-draft-strategy">
+    <AdCard id="ad-roster-construction" filename="mns-ad-roster-construction">
       <div className="flex flex-col h-full min-h-[680px] bg-gradient-to-b from-[#080b10] via-[#0d1117] to-[#080b10] p-7 text-center">
         {/* Top badge */}
         <div className="mx-auto mb-4 rounded-full border border-[#00e5ff30] bg-[#00e5ff08] px-4 py-1.5">
           <span className="font-body text-xs tracking-widest uppercase text-[#00e5ff]">
-            Draft Strategy
+            Roster Construction
           </span>
         </div>
 
@@ -1209,7 +1246,7 @@ function AdDraftStrategy() {
           HOW WOULD
           <br />
           <span className="text-[#00e5ff]" style={{ textShadow: '0 0 25px #00e5ff' }}>
-            YOU DRAFT?
+            YOU BUILD IT?
           </span>
         </h2>
 
@@ -1247,7 +1284,7 @@ function AdDraftStrategy() {
 
           {/* Strategy B: Diversified */}
           <div className="rounded-xl border border-[#bf5af225] bg-[#bf5af206] p-3 text-left">
-            <p className="font-display text-xs text-[#bf5af2] mb-2 text-center">CHAOS DRAFT</p>
+            <p className="font-display text-xs text-[#bf5af2] mb-2 text-center">CHAOS BUILD</p>
             <div className="space-y-1">
               {[
                 { name: 'Fears Jr.', team: 'MSU', color: '#00ff87' },
@@ -1309,7 +1346,7 @@ function AdDraftStrategy() {
               boxShadow: '0 0 30px rgba(0,229,255,0.3)',
             }}
           >
-            DRAFT YOUR 10
+            BUILD YOUR 10
           </div>
           <span className="font-body text-xs text-[#4b5563]">
             What's your strategy?
@@ -1341,66 +1378,110 @@ export default function Media() {
       label: 'Sports Fans',
       description: 'For the casual fan who loves March Madness and wants to play with friends.',
       component: <AdNormie />,
+      captions: [
+        `Think you know March Madness? Prove it.\n\nPick 10 real players. Earn points from their actual stats. Outlast your friends.\n\nFree to play. No bracket needed.\n\nncaa.mnsfantasy.com`,
+        `March Madness but make it fantasy.\n\nDraft 10 players across 4 seed tiers. Their real stats = your score. Best roster wins.\n\nncaa.mnsfantasy.com`,
+      ],
     },
     {
       id: 'advanced',
       label: 'Fantasy Pros',
       description: 'For experienced fantasy players looking for a fresh format with real strategy depth.',
       component: <AdAdvanced />,
+      captions: [
+        `Brackets are coin flips. This is strategy.\n\nDraft 10 real NCAA players across 4 seed tiers. PTS + REB + AST from every tournament game.\n\nEliminated teams = frozen stats. Choose wisely.\n\nncaa.mnsfantasy.com`,
+        `Fantasy meets March Madness.\n\n4 tiers. 10 picks. Real stats. If you play fantasy football, you need to try this.\n\nncaa.mnsfantasy.com`,
+      ],
     },
     {
       id: 'vibecoders',
       label: 'Vibecoders',
       description: 'For the developer/builder community. This whole thing was vibecoded with AI.',
       component: <AdVibecoders />,
+      captions: [
+        `This entire fantasy platform was vibecoded with Claude.\n\nReact + Vite, Neon Postgres, Drizzle ORM, Clerk auth, Vercel serverless.\n\nShip fast. Have fun. March Madness is the vibe check.\n\nncaa.mnsfantasy.com`,
+        `npx create-league\n> League created. Invite your friends.\n> Draft your 10 players.\n> Ship it.\n\nBuilt by a vibecoder. Powered by Claude.\n\nncaa.mnsfantasy.com`,
+      ],
     },
     {
       id: 'crypto',
       label: 'Crypto / Web3',
       description: 'For the degen crowd. Crypto buy-ins, peer-to-peer, no middleman.',
       component: <AdCrypto />,
+      captions: [
+        `March Madness + crypto buy-ins.\n\nCreate leagues with ETH or BTC. Peer-to-peer. No middleman. Winner takes the pot.\n\nDegen responsibly.\n\nncaa.mnsfantasy.com`,
+        `Forget brackets. Draft 10 real players. Set a crypto buy-in with your crew. Most stats wins the pot.\n\nncaa.mnsfantasy.com`,
+      ],
     },
     {
       id: 'genz',
       label: 'College Students / Gen Z',
       description: 'FOMO-driven, group chat energy, competitive friend groups.',
       component: <AdGenZ />,
+      captions: [
+        `Your group chat isn't ready for this.\n\nMarch Madness player pool. Pick 10 real players. Flex on your friends all tournament.\n\nFree. No bracket. Just bragging rights.\n\nncaa.mnsfantasy.com`,
+        `Send this to the group chat and watch the trash talk begin.\n\n10 players. 4 tiers. Real stats. Free to play.\n\nncaa.mnsfantasy.com`,
+      ],
     },
     {
       id: 'dfs',
       label: 'Sports Bettors / DFS',
       description: 'For sports bettors and DFS players. Set your own buy-in with friends, winner takes the pot.',
       component: <AdDFS />,
+      captions: [
+        `Better than a bracket.\n\nDraft 10 real NCAA players. Set your own buy-in with friends. PTS + REB + AST from every game. Most stats wins.\n\nncaa.mnsfantasy.com`,
+        `Stat-based March Madness player pool.\n\nYou and your friends set the stakes. Real stats. Real strategy. Winner takes the pot.\n\nncaa.mnsfantasy.com`,
+      ],
     },
     {
       id: 'alumni',
       label: 'Alumni / School Pride',
       description: 'Rep your school\'s players. Loyalty meets strategy.',
       component: <AdAlumni />,
+      captions: [
+        `Your school is in the tournament. Draft their players.\n\nWatch their stats climb. Prove your school runs March.\n\n10 picks across 4 seed tiers. Loyalty meets strategy.\n\nncaa.mnsfantasy.com`,
+        `Rep your alma mater in March Madness — or poach from rivals.\n\nDraft 10 real players. Their tournament stats = your score.\n\nncaa.mnsfantasy.com`,
+      ],
     },
     {
       id: 'cinderella',
       label: 'Cinderella / Chaos',
       description: 'For fans who live for the upsets. Underdogs, Cinderellas, pure madness.',
       component: <AdCinderella />,
+      captions: [
+        `16-seeds beat 1-seeds. Nobodies become legends.\n\nIn MNSfantasy, Cinderellas score points too. Draft the underdogs everyone else ignores.\n\nChaos is the strategy.\n\nncaa.mnsfantasy.com`,
+        `Everyone drafts the favorites. The smart ones draft the chaos.\n\nTier 4 underdogs. One pick. One shot. If they go on a run, you win big.\n\nncaa.mnsfantasy.com`,
+      ],
     },
     {
       id: 'squad',
       label: 'Social / Squad',
       description: 'Group competition, trash talk, leaderboard bragging rights.',
       component: <AdSquad />,
+      captions: [
+        `5 friends. 1 champion.\n\nCreate a March Madness player pool in 30 seconds. Invite your crew. Draft 10 players. Talk trash all tournament.\n\nBragging rights are forever.\n\nncaa.mnsfantasy.com`,
+        `Start a league. Send the invite code. Watch the leaderboard all March.\n\nWinner gets the glory. Loser gets the group chat roast.\n\nncaa.mnsfantasy.com`,
+      ],
     },
     {
       id: 'roster',
       label: 'Roster Showcase',
       description: 'Shows a full 10-player example roster across all 4 tiers. Great for explaining the format.',
       component: <AdRoster />,
+      captions: [
+        `This is what a roster looks like in MNSfantasy.\n\n4 picks from Tier 1 (seeds 1-4)\n3 picks from Tier 2 (seeds 5-8)\n2 picks from Tier 3 (seeds 9-12)\n1 pick from Tier 4 (seeds 13-16)\n\nEvery stat they score in the tournament counts. Build yours at ncaa.mnsfantasy.com`,
+        `10 players. 4 tiers. Your March Madness roster.\n\nPTS + REB + AST from every real tournament game. The best roster wins.\n\nncaa.mnsfantasy.com`,
+      ],
     },
     {
-      id: 'draft-strategy',
-      label: 'Draft Strategy',
-      description: 'Side-by-side comparison of two draft strategies using the same tier structure.',
-      component: <AdDraftStrategy />,
+      id: 'roster-construction',
+      label: 'Roster Construction',
+      description: 'Side-by-side comparison of two roster strategies using the same tier structure.',
+      component: <AdRosterConstruction />,
+      captions: [
+        `Same 10 picks. Same tiers. Completely different strategies.\n\nDo you go all-in on favorites or spread the risk and chase upsets?\n\nHow would you build yours?\n\nncaa.mnsfantasy.com`,
+        `Stars & Scrubs or Chaos Build?\n\nEvery MNSfantasy roster has the same structure — how you fill it is up to you.\n\n4 tiers. 10 picks. What's your strategy?\n\nncaa.mnsfantasy.com`,
+      ],
     },
   ];
 
@@ -1444,7 +1525,7 @@ export default function Media() {
 
         {/* Ad sections */}
         <div className="flex flex-col gap-20">
-          {sections.map(({ id, label, description, component }, i) => (
+          {sections.map(({ id, label, description, component, captions }, i) => (
             <motion.section
               key={id}
               initial={{ opacity: 0, y: 30 }}
@@ -1468,6 +1549,9 @@ export default function Media() {
 
               {/* Ad */}
               {component}
+
+              {/* Captions */}
+              {captions && <CaptionBlock captions={captions} />}
             </motion.section>
           ))}
         </div>

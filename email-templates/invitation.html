@@ -1,0 +1,42 @@
+<re-html>
+<re-head>
+    <re-title>
+        Your invitation to {{app.name}}
+    </re-title>
+</re-head>
+<re-body background-color="#080b10" padding="48px 16px">
+    <re-preheader>
+        Your invitation to {{app.name}}
+    </re-preheader>
+    <re-header padding="16px 32px 8px 32px">
+        <re-text font-size="20px" font-weight="bold" line-height="26px" color="#f0f4f8">
+            <span style="color: #ffffff;">MNS</span><span style="color: #00ff87;">FANTASY</span>
+        </re-text>
+    </re-header>
+    <re-main background-color="#080b10" border-radius="0px">
+        <re-block border-radius="12px" align="left" padding="32px" background-color="#111827" font-size="14px" margin="24px 0px 0px 0px" border="1px solid #1f2937">
+            <re-heading margin="0px 0px 0px 0px" level="h1" align="left" color="#f0f4f8" font-size="24px" line-height="32px">
+                Your invitation
+            </re-heading>
+            <re-text margin="16px 0px 0px 0px" align="left" font-size="14px" color="#8b949e">
+                {{#if inviter_name}}{{escapeURIs inviter_name}} has invited you to join them on {{app.name}}.{{else}}You are invited to join {{app.name}}.{{/if}}
+            </re-text>
+            <re-text margin="12px 0px 0px 0px" align="left" font-size="14px" color="#8b949e">
+                This invitation will expire in {{invitation.expires_in_days}} days.
+            </re-text>
+            <re-button padding="10px 24px" href="{{action_url}}" font-size="14px" font-weight="bold" border-radius="12px" margin="32px 0px 0px 0px" background-color="#00ff87" color="#080b10">
+                Accept invitation
+            </re-button>
+            <re-text margin="24px 0px 0px 0px" font-size="13px" color="#8b949e">
+                If you're having trouble with the button, <a href="{{action_url}}" style="color: #00ff87; text-decoration: underline;">click here</a>.
+            </re-text>
+        </re-block>
+    </re-main>
+    <re-footer padding="24px 32px 48px">
+        <re-divider background-color="#1f2937" height="1px"></re-divider>
+        <re-text margin="16px 0px 0px 0px" font-size="12px" color="#8b949e">
+            &copy; {{current_year}} {{app.name}}
+        </re-text>
+    </re-footer>
+</re-body>
+</re-html>
