@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   X,
   Download,
+  UserX,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -268,6 +269,10 @@ export default function AdminPanel() {
   const [selectedRound, setSelectedRound] = useState(TOURNAMENT_ROUNDS[0]);
   const [showEliminateModal, setShowEliminateModal] = useState(false);
 
+  // ---- Deactivate Player state ----
+  const [deactivatePlayerName, setDeactivatePlayerName] = useState('');
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+
   /* ---------------------------------------------------------------- */
   /*  Queries                                                          */
   /* ---------------------------------------------------------------- */
@@ -368,6 +373,28 @@ export default function AdminPanel() {
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to eliminate team');
+    },
+  });
+
+  // Deactivate Player
+  const deactivatePlayerMutation = useMutation({
+    mutationFn: (reactivate?: boolean) =>
+      apiFetch('/api/admin/deactivate-player', {
+        method: 'POST',
+        body: JSON.stringify({
+          playerName: deactivatePlayerName,
+          reactivate,
+        }),
+      }),
+    onSuccess: (data: { message: string }) => {
+      toast.success(data.message);
+      setShowDeactivateModal(false);
+      setDeactivatePlayerName('');
+      queryClient.invalidateQueries({ queryKey: ['players-teams'] });
+      queryClient.invalidateQueries({ queryKey: ['players'] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to update player status');
     },
   });
 
@@ -791,7 +818,63 @@ export default function AdminPanel() {
         </SectionCard>
 
         {/* ================================================================ */}
-        {/*  Section 5: Email Blast                                           */}
+        {/*  Section 5: Deactivate Player                                     */}
+        {/* ================================================================ */}
+        <SectionCard title="Deactivate Player" icon={UserX} delay={0.22}>
+          <div className="space-y-4">
+            <p className="text-xs text-text-muted">
+              Remove an injured or ineligible player from the pool. They will no longer appear in the draft but will stay on existing rosters with an injury badge.
+            </p>
+            <div>
+              <label
+                htmlFor="player-name-input"
+                className="mb-1 block text-xs text-text-muted"
+              >
+                Player Name
+              </label>
+              <input
+                id="player-name-input"
+                type="text"
+                placeholder="e.g. Caleb Wilson"
+                value={deactivatePlayerName}
+                onChange={(e) => setDeactivatePlayerName(e.target.value)}
+                className="w-full rounded-lg border border-bg-border bg-bg-primary px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:border-neon-green focus:outline-none focus:ring-1 focus:ring-neon-green transition-colors"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="danger"
+                size="md"
+                onClick={() => setShowDeactivateModal(true)}
+                disabled={!deactivatePlayerName.trim()}
+              >
+                <UserX className="h-4 w-4" />
+                Deactivate
+              </Button>
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => deactivatePlayerMutation.mutate(true)}
+                disabled={!deactivatePlayerName.trim() || deactivatePlayerMutation.isPending}
+              >
+                Reactivate
+              </Button>
+            </div>
+          </div>
+
+          <ConfirmModal
+            open={showDeactivateModal}
+            title="Deactivate Player"
+            message={`Are you sure you want to deactivate "${deactivatePlayerName}"? They will be removed from the player pool.`}
+            confirmLabel="Deactivate"
+            onConfirm={() => deactivatePlayerMutation.mutate(false)}
+            onCancel={() => setShowDeactivateModal(false)}
+            loading={deactivatePlayerMutation.isPending}
+          />
+        </SectionCard>
+
+        {/* ================================================================ */}
+        {/*  Section 6: Email Blast                                           */}
         {/* ================================================================ */}
         <SectionCard title="Email Blast" icon={Mail} delay={0.25}>
           <Button

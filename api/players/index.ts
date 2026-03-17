@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, and } from 'drizzle-orm';
 import { verifyAuth } from '../_middleware.js';
 import { db, schema } from '../_db.js';
 
@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .innerJoin(ncaaTeams, eq(ncaaTeams.id, players.teamId))
       .$dynamic();
 
-    // Filter by seed tier if provided
+    // Filter by seed tier if provided, always exclude inactive players
     if (seedTier) {
       const tier = parseInt(seedTier, 10);
       let seeds: number[] = [];
@@ -62,7 +62,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'Invalid seed_tier. Must be 1, 2, 3, or 4.' });
       }
 
-      query = query.where(inArray(ncaaTeams.seed, seeds));
+      query = query.where(and(eq(players.isActive, true), inArray(ncaaTeams.seed, seeds)));
+    } else {
+      query = query.where(eq(players.isActive, true));
     }
 
     const rows = await query;

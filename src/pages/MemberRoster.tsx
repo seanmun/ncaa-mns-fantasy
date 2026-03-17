@@ -208,12 +208,13 @@ export default function MemberRoster() {
                       <div className="divide-y divide-bg-border/50">
                         {tierPlayers.map((player) => {
                           const eliminated = player.team.isEliminated;
+                          const injured = !player.isActive;
                           return (
                             <div
                               key={player.id}
                               className={cn(
                                 'flex items-center gap-3 py-2.5 px-2',
-                                eliminated && 'opacity-40',
+                                (eliminated || injured) && 'opacity-40',
                               )}
                             >
                               {/* Player info */}
@@ -222,7 +223,7 @@ export default function MemberRoster() {
                                   <span
                                     className={cn(
                                       'text-sm font-semibold text-text-primary truncate',
-                                      eliminated && 'line-through',
+                                      (eliminated || injured) && 'line-through',
                                     )}
                                   >
                                     {player.name}
@@ -241,6 +242,11 @@ export default function MemberRoster() {
                                   {eliminated && (
                                     <span className="shrink-0 rounded-full bg-neon-red/15 px-1.5 py-0.5 text-[10px] font-semibold text-neon-red">
                                       OUT
+                                    </span>
+                                  )}
+                                  {injured && (
+                                    <span className="shrink-0 rounded-full bg-neon-orange/15 px-1.5 py-0.5 text-[10px] font-semibold text-neon-orange">
+                                      INJ
                                     </span>
                                   )}
                                 </div>
