@@ -12,11 +12,11 @@ interface StandingsTableProps {
   leagueId: string;
 }
 
-const SORT_COLUMNS: { key: SortKey; label: string; shortLabel: string }[] = [
-  { key: 'totalPts', label: 'PTS', shortLabel: 'PTS' },
-  { key: 'totalReb', label: 'REB', shortLabel: 'REB' },
-  { key: 'totalAst', label: 'AST', shortLabel: 'AST' },
-  { key: 'totalScore', label: 'TOTAL', shortLabel: 'TOT' },
+const SORT_COLUMNS: { key: SortKey; label: string }[] = [
+  { key: 'totalScore', label: 'SCR' },
+  { key: 'totalPts', label: 'PTS' },
+  { key: 'totalReb', label: 'REB' },
+  { key: 'totalAst', label: 'AST' },
 ];
 
 export function StandingsTable({
@@ -45,7 +45,6 @@ export function StandingsTable({
     return sortDir === 'desc' ? -diff : diff;
   });
 
-  // Assign rank based on sorted order
   const ranked = sorted.map((entry, idx) => ({
     ...entry,
     rank: idx + 1,
@@ -53,7 +52,7 @@ export function StandingsTable({
 
   return (
     <div
-      className="overflow-x-auto rounded-xl border border-bg-border bg-bg-card"
+      className="rounded-xl border border-bg-border bg-bg-card"
       role="region"
       aria-label="League standings"
     >
@@ -62,32 +61,32 @@ export function StandingsTable({
         {sortDir === 'desc' ? 'descending' : 'ascending'} order
       </div>
 
-      <table role="table" className="w-full min-w-[640px] text-sm">
+      <table role="table" className="w-full text-sm">
         <thead>
           <tr className="border-b border-bg-border text-left">
             <th
               scope="col"
-              className="sticky left-0 z-10 bg-bg-card px-4 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted"
+              className="py-2.5 pl-3 pr-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted"
             >
-              Rank
+              #
             </th>
             <th
               scope="col"
-              className="sticky left-[72px] z-10 bg-bg-card px-4 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted shadow-[2px_0_4px_rgba(0,0,0,0.3)]"
+              className="px-2 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted"
             >
               Team
             </th>
             <th
               scope="col"
-              className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted"
+              className="px-1 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-text-muted"
             >
-              Players
+              P
             </th>
             {SORT_COLUMNS.map(({ key, label }) => (
               <th
                 key={key}
                 scope="col"
-                className="px-4 py-3 text-right"
+                className="px-1 py-2.5 text-right"
               >
                 <button
                   type="button"
@@ -100,14 +99,14 @@ export function StandingsTable({
                       : 'none'
                   }
                   className={cn(
-                    'inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider transition-colors duration-150',
-                    'hover:text-neon-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-green focus-visible:ring-offset-1 focus-visible:ring-offset-bg-card rounded',
+                    'text-[10px] font-semibold uppercase tracking-wider transition-colors duration-150',
+                    'hover:text-neon-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-green rounded',
                     sortKey === key ? 'text-neon-green' : 'text-text-muted',
                   )}
                 >
                   {label}
                   {sortKey === key && (
-                    <span aria-hidden="true">
+                    <span aria-hidden="true" className="ml-0.5">
                       {sortDir === 'desc' ? '\u25BC' : '\u25B2'}
                     </span>
                   )}
@@ -144,56 +143,51 @@ export function StandingsTable({
                 )}
               >
                 {/* Rank */}
-                <td className="sticky left-0 z-10 bg-bg-card px-4 py-3 font-mono text-sm font-bold text-text-primary">
-                  <span className="flex items-center gap-1.5">
-                    {entry.rank === 1 && (
-                      <span aria-label="First place">{'🏆'}</span>
-                    )}
-                    <span>{entry.rank}</span>
-                  </span>
+                <td className="py-2.5 pl-3 pr-1 font-mono text-xs font-bold text-text-primary">
+                  {entry.rank}
                 </td>
 
-                {/* Team name */}
+                {/* Team */}
                 <td
                   className={cn(
-                    'sticky left-[72px] z-10 bg-bg-card px-4 py-3 font-semibold shadow-[2px_0_4px_rgba(0,0,0,0.3)]',
+                    'px-2 py-2.5 text-xs font-semibold truncate max-w-[120px] sm:max-w-none',
                     isCurrentUser ? 'text-neon-green' : 'text-text-primary',
                   )}
                 >
                   {entry.teamName}
                   {isCurrentUser && (
-                    <span className="ml-1.5 text-[10px] uppercase text-text-muted">
+                    <span className="ml-1 text-[9px] uppercase text-text-muted">
                       (you)
                     </span>
                   )}
                 </td>
 
-                {/* Active players */}
-                <td className="px-4 py-3 text-sm font-mono">
+                {/* Players */}
+                <td className="px-1 py-2.5 text-center font-mono text-xs">
                   <span className={entry.eliminatedCount > 0 ? 'text-neon-orange' : 'text-neon-green'}>
                     {entry.playerCount - entry.eliminatedCount}
                   </span>
                   <span className="text-text-muted">/{entry.playerCount}</span>
                 </td>
 
+                {/* Score */}
+                <td className="px-1 py-2.5 text-right font-mono text-xs font-bold text-neon-green">
+                  {formatScore(entry.totalScore)}
+                </td>
+
                 {/* PTS */}
-                <td className="px-4 py-3 text-right font-mono text-sm text-text-primary">
+                <td className="px-1 py-2.5 text-right font-mono text-xs text-text-primary">
                   {formatScore(entry.totalPts)}
                 </td>
 
                 {/* REB */}
-                <td className="px-4 py-3 text-right font-mono text-sm text-text-primary">
+                <td className="px-1 py-2.5 text-right font-mono text-xs text-text-primary">
                   {formatScore(entry.totalReb)}
                 </td>
 
                 {/* AST */}
-                <td className="px-4 py-3 text-right font-mono text-sm text-text-primary">
+                <td className="px-1 py-2.5 text-right font-mono text-xs text-text-primary">
                   {formatScore(entry.totalAst)}
-                </td>
-
-                {/* TOTAL */}
-                <td className="px-4 py-3 text-right font-mono text-sm font-bold text-neon-green">
-                  {formatScore(entry.totalScore)}
                 </td>
               </tr>
             );
@@ -203,7 +197,7 @@ export function StandingsTable({
             <tr>
               <td
                 colSpan={7}
-                className="px-4 py-8 text-center text-sm text-text-muted"
+                className="px-3 py-8 text-center text-sm text-text-muted"
               >
                 No standings data yet
               </td>
