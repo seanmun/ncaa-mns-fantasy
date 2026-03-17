@@ -6,8 +6,8 @@ export default function BottomNav() {
   const isAdmin = useAdminCheck();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 h-[60px] bg-bg-secondary border-t border-bg-border md:hidden">
-      <div className="h-full flex items-center justify-around px-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-bg-secondary border-t border-bg-border md:hidden pb-[env(safe-area-inset-bottom)]">
+      <div className="h-[60px] flex items-center justify-around px-2">
         <NavLink
           to="/dashboard"
           className={({ isActive }) =>

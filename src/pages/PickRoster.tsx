@@ -1044,50 +1044,20 @@ export default function PickRoster() {
         {/* ============================================================= */}
         {/*  BOTTOM STICKY BAR                                             */}
         {/* ============================================================= */}
-        <div className="fixed inset-x-0 bottom-[60px] md:bottom-0 z-40 border-t border-bg-border bg-bg-secondary/95 backdrop-blur-sm">
-          <div className="mx-auto max-w-5xl px-4 py-3">
-            {/* Quick team indicator — mobile only */}
-            {totalPicks > 0 && (
-              <div className="mb-2 lg:hidden">
-                <button
-                  type="button"
-                  onClick={() => setMobileView('team')}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg py-1.5 text-xs text-text-muted transition-colors hover:text-text-secondary"
-                >
-                  <span className="flex gap-1">
-                    {SEED_TIERS.map((tierConfig) => {
-                      const count = pickCount(tierConfig.tier);
-                      const full = count === tierConfig.picks;
-                      return (
-                        <span
-                          key={tierConfig.tier}
-                          className={cn(
-                            'inline-flex h-5 w-5 items-center justify-center rounded-full font-mono text-[10px] font-bold',
-                            full
-                              ? `${TIER_BG_LOW[tierConfig.tier]} ${TIER_TEXT_COLOR[tierConfig.tier]}`
-                              : 'bg-bg-card text-text-muted',
-                          )}
-                        >
-                          {count}
-                        </span>
-                      );
-                    })}
-                  </span>
-                  <span>View Team</span>
-                </button>
-              </div>
-            )}
-
+        <div
+          className="fixed inset-x-0 md:bottom-0 z-40 border-t border-bg-border bg-bg-secondary/95 backdrop-blur-sm"
+          style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
+        >
+          <div className="mx-auto max-w-5xl px-4 py-2">
             {/* Action row */}
             <div className="flex items-center justify-between gap-4">
               <p className="font-mono text-sm text-text-secondary">
-                My Picks:{' '}
                 <span
                   className={`font-bold ${allPicked ? 'text-neon-green' : 'text-text-primary'}`}
                 >
                   {totalPicks}
                 </span>
-                /10
+                /10 picks
               </p>
 
               <button
@@ -1119,7 +1089,7 @@ export default function PickRoster() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4"
               onClick={() => setShowConfirmModal(false)}
             >
               <motion.div
@@ -1128,7 +1098,7 @@ export default function PickRoster() {
                 exit={{ opacity: 0, scale: 0.92, y: 20 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 28 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg rounded-2xl border border-bg-border bg-bg-secondary p-6 shadow-2xl"
+                className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl border border-bg-border bg-bg-secondary p-6 shadow-2xl pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
               >
                 <h2 className="mb-6 text-center font-display text-2xl tracking-wide text-text-primary">
                   {isEditMode ? 'Update Your Roster' : 'Confirm Your Roster'}
