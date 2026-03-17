@@ -10,8 +10,8 @@
   ],
   "crons": [
     {
-      "path": "/api/stats/sync",
-      "schedule": "0 12 * * *"
+      "path": "/api/stats/live-sync",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

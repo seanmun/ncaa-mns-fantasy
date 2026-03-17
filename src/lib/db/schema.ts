@@ -149,6 +149,19 @@ export const emailLog = pgTable('email_log', {
   sentAt: timestamp('sent_at').defaultNow().notNull(),
 });
 
+// Active games (live scores from SportsRadar, populated by live-sync cron)
+export const activeGames = pgTable('active_games', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  srGameId: text('sr_game_id').notNull().unique(),
+  homeTeamName: text('home_team_name').notNull(),
+  awayTeamName: text('away_team_name').notNull(),
+  homeScore: integer('home_score').default(0).notNull(),
+  awayScore: integer('away_score').default(0).notNull(),
+  status: text('status').notNull().default('scheduled'),
+  scheduledTime: timestamp('scheduled_time'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // PLATFORM PATTERN — reuse in all game apps and mnsfantasy.com root
 // Global marketing opt-in (one row per user, set at first login on ANY subdomain)
 export const marketingSubscribers = pgTable('marketing_subscribers', {

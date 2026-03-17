@@ -26,6 +26,7 @@ import Changelog from './pages/Changelog';
 import NotFound from './pages/NotFound';
 import OnboardingModal from './components/ui/OnboardingModal';
 import { useUserSync } from './hooks/useUserSync';
+import { useAdminCheck } from './hooks/useAdminCheck';
 import { Analytics } from '@vercel/analytics/react';
 
 // Syncs Clerk user → local DB users table on sign-in
@@ -47,6 +48,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!isSignedIn) {
     return <RedirectToSignIn />;
+  }
+
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const isAdmin = useAdminCheck();
+
+  if (!isAdmin) {
+    return <NotFound />;
   }
 
   return <>{children}</>;
@@ -101,7 +112,7 @@ export default function App() {
             <Route path="/leagues/:id" element={<LeagueHome />} />
             <Route path="/leagues/:id/pick" element={<PickRoster />} />
             <Route path="/leagues/:id/roster/:memberId" element={<MemberRoster />} />
-            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
             <Route path="/settings" element={<Settings />} />
           </Route>
 

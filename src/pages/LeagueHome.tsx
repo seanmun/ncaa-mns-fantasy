@@ -12,6 +12,7 @@ import PageTransition from '@/components/layout/PageTransition';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { motion } from 'framer-motion';
+import { formatDistanceToNow } from 'date-fns';
 import {
   Users,
   Lock,
@@ -40,6 +41,24 @@ interface LeagueDetail extends LeagueWithDetails {
   currentMemberRosterLocked: boolean;
 }
 
+interface TodayGame {
+  gameId: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number;
+  awayScore: number;
+  status: string;
+  scheduledTime: string | null;
+}
+
+interface TodayGamesResponse {
+  data: {
+    games: TodayGame[];
+    lastSyncTime: string | null;
+    hasLiveGames: boolean;
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -60,16 +79,29 @@ export default function LeagueHome() {
     enabled: !!id,
   });
 
-  /* ---------- Fetch standings ---------- */
+  /* ---------- Fetch standings (auto-refresh every 30s) ---------- */
   const { data: standings, isLoading: standingsLoading } = useQuery<
     StandingsEntry[]
   >({
     queryKey: ['standings', id],
     queryFn: () => apiFetch(`/api/leagues/${id}/standings`),
     enabled: !!id,
-    staleTime: 60_000,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
   });
+
+  /* ---------- Fetch today's games ---------- */
+  const { data: todayData } = useQuery<TodayGamesResponse>({
+    queryKey: ['todayGames'],
+    queryFn: () => apiFetch('/api/stats/today'),
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+
+  const todayGames = todayData?.data?.games ?? [];
+  const lastSyncTime = todayData?.data?.lastSyncTime;
+  const hasLiveGames = todayData?.data?.hasLiveGames ?? false;
 
   const isAdmin = league?.adminId === currentUserId;
   const buyIn = league ? parseFloat(league.buyInAmount) : 0;
@@ -179,19 +211,101 @@ export default function LeagueHome() {
               </div>
             )}
 
-            {/* ---------- Today's Games placeholder ---------- */}
+            {/* ---------- Last updated indicator ---------- */}
+            {lastSyncTime && (
+              <div className="mt-3 text-xs text-text-muted text-right">
+                Stats updated{' '}
+                {formatDistanceToNow(new Date(lastSyncTime), { addSuffix: true })}
+                {hasLiveGames && (
+                  <span className="ml-2 inline-flex items-center gap-1">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-green opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-green" />
+                    </span>
+                    LIVE
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* ---------- Today's Games ---------- */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               className="mt-6 rounded-xl border border-bg-border bg-bg-card p-6"
             >
-              <h2 className="font-display text-xl tracking-wide text-text-primary mb-2">
+              <h2 className="font-display text-xl tracking-wide text-text-primary mb-4">
                 Today's Games
               </h2>
-              <p className="text-sm text-text-muted">
-                Games happening today will appear here during the tournament.
-              </p>
+              {todayGames.length === 0 ? (
+                <p className="text-sm text-text-muted">
+                  No games scheduled today.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {todayGames.map((game) => (
+                    <div
+                      key={game.gameId}
+                      className="flex items-center justify-between rounded-lg border border-bg-border bg-bg-primary px-4 py-3"
+                    >
+                      {/* Away team */}
+                      <div className="flex-1 text-right">
+                        <p className="text-sm font-semibold text-text-primary truncate">
+                          {game.awayTeam}
+                        </p>
+                      </div>
+
+                      {/* Score / status */}
+                      <div className="mx-4 flex flex-col items-center min-w-[80px]">
+                        {game.status === 'scheduled' ? (
+                          <p className="text-xs text-text-muted">
+                            {game.scheduledTime
+                              ? new Date(game.scheduledTime).toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  timeZone: 'America/New_York',
+                                })
+                              : 'TBD'}
+                          </p>
+                        ) : (
+                          <p className="text-lg font-bold text-text-primary tabular-nums">
+                            {game.awayScore} - {game.homeScore}
+                          </p>
+                        )}
+                        <span
+                          className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                            game.status === 'inprogress'
+                              ? 'bg-neon-green/15 text-neon-green border border-neon-green/30'
+                              : game.status === 'closed' || game.status === 'complete'
+                              ? 'bg-white/10 text-text-secondary border border-bg-border'
+                              : 'bg-white/5 text-text-muted border border-bg-border'
+                          }`}
+                        >
+                          {game.status === 'inprogress' && (
+                            <span className="relative flex h-1.5 w-1.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-green opacity-75" />
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-neon-green" />
+                            </span>
+                          )}
+                          {game.status === 'inprogress'
+                            ? 'Live'
+                            : game.status === 'closed' || game.status === 'complete'
+                            ? 'Final'
+                            : 'Scheduled'}
+                        </span>
+                      </div>
+
+                      {/* Home team */}
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-text-primary truncate">
+                          {game.homeTeam}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </div>
 
