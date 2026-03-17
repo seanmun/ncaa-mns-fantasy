@@ -14,9 +14,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Auth: cron secret or admin user
-  const cronSecret = req.headers['x-cron-secret'] || req.query.cron_secret;
-  let authorized = cronSecret === process.env.CRON_SECRET && !!process.env.CRON_SECRET;
+  // Auth: Vercel cron (Authorization: Bearer), custom header, query param, or admin user
+  const bearerToken = req.headers.authorization?.replace('Bearer ', '');
+  const cronSecret = bearerToken || req.headers['x-cron-secret'] || req.query.cron_secret;
+  let authorized = !!process.env.CRON_SECRET && cronSecret === process.env.CRON_SECRET;
 
   if (!authorized) {
     const userId = await verifyAuth(req);
