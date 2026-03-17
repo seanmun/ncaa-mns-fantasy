@@ -22,7 +22,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import type { StandingsEntry, LeagueWithDetails } from '@/types';
-import { getPlatformUrl, isRosterLocked } from '@/lib/utils';
+import { isRosterLocked } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -76,7 +76,7 @@ export default function LeagueHome() {
   const isCrypto =
     league?.buyInCurrency === 'ETH' || league?.buyInCurrency === 'BTC';
   const inviteUrl = league
-    ? `${getPlatformUrl()}/join/${league.inviteCode}`
+    ? `${window.location.origin}/join/${league.inviteCode}`
     : '';
 
   /* ---------- Admin lock toggle ---------- */

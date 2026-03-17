@@ -40,14 +40,22 @@ export default function JoinLeague() {
 
   const [teamName, setTeamName] = useState('');
 
-  /* ---------- Fetch league info by invite code (public) ---------- */
+  /* ---------- Fetch league info by invite code (public, no auth) ---------- */
   const {
     data: league,
     isLoading,
     isError,
   } = useQuery<LeaguePreview>({
     queryKey: ['league-preview', inviteCode],
-    queryFn: () => apiFetch(`/api/leagues/join/${inviteCode}`),
+    queryFn: async () => {
+      const res = await fetch(`/api/leagues/join/${inviteCode}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Request failed' }));
+        throw new Error(err.message || `API error: ${res.status}`);
+      }
+      const json = await res.json();
+      return json.data !== undefined ? json.data : json;
+    },
     enabled: !!inviteCode,
     retry: false,
   });
