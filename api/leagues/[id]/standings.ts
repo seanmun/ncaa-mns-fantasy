@@ -82,11 +82,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
 
     // Map to StandingsEntry shape the frontend expects
-    const result = standings.map((entry, index) => ({
+    const result = standings.map((entry) => ({
       memberId: entry.memberId,
       userId: entry.userId,
       teamName: entry.teamName,
       displayName: entry.displayName,
+      avatarUrl: entry.avatarUrl,
       playerCount: Number(entry.playerCount),
       eliminatedCount: Number(entry.eliminatedCount),
       totalPts: Number(entry.totalPts),
@@ -94,6 +95,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       totalAst: Number(entry.totalAst),
       totalScore: Number(entry.totalScore),
     }));
+
+    // Debug: log standings with player counts to trace 0-player issue
+    console.log('[STANDINGS]', result.map((r) => `${r.teamName}: ${r.playerCount} players (memberId=${r.memberId})`).join(', '));
 
     return res.status(200).json(result);
   } catch (err) {

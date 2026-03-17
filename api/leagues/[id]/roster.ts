@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { verifyAuth } from '../../_middleware.js';
 import { db, schema } from '../../_db.js';
 
@@ -111,20 +111,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Delete existing roster for this member, then insert new picks (atomic)
+    // Delete existing roster for this member, then insert new picks
+    console.log('[ROSTER SAVE] memberId:', membership.id, 'userId:', userId, 'leagueId:', leagueId, 'playerIds:', playerIds.length);
+
+    await db
+      .delete(rosters)
+      .where(eq(rosters.memberId, membership.id));
+
     const rosterInserts = playerIds.map((playerId: string) => ({
       memberId: membership.id,
       playerId,
     }));
 
-    await db.transaction(async (tx) => {
-      await tx
-        .delete(rosters)
-        .where(eq(rosters.memberId, membership.id));
-      await tx.insert(rosters).values(rosterInserts);
-    });
+    await db.insert(rosters).values(rosterInserts);
 
-    return res.status(201).json({ data: { success: true, playerCount: 10 } });
+    // Verify the insert actually persisted
+    const [verification] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(rosters)
+      .where(eq(rosters.memberId, membership.id));
+
+    console.log('[ROSTER SAVE] verified count:', verification.count, 'for memberId:', membership.id);
+
+    if (verification.count === 0) {
+      console.error('[ROSTER SAVE] INSERT SUCCEEDED BUT VERIFICATION FOUND 0 ROWS!', {
+        memberId: membership.id,
+        userId,
+        leagueId,
+      });
+      return res.status(500).json({ error: 'Roster save failed: data did not persist' });
+    }
+
+    return res.status(201).json({ data: { success: true, playerCount: verification.count } });
   } catch (err) {
     console.error('Error saving roster:', err);
     return res.status(500).json({ error: 'Failed to save roster' });
