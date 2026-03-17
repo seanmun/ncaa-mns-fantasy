@@ -41,16 +41,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Verify the target member belongs to this league
     // Support lookup by memberId (UUID) or userId (Clerk ID string)
-    let [targetMember] = await db
-      .select()
-      .from(leagueMembers)
-      .where(
-        and(
-          eq(leagueMembers.id, memberId),
-          eq(leagueMembers.leagueId, leagueId)
+    // UUID regex: try UUID lookup first, fall back to userId lookup for Clerk IDs
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(memberId);
+
+    let targetMember: typeof leagueMembers.$inferSelect | undefined;
+
+    if (isUuid) {
+      [targetMember] = await db
+        .select()
+        .from(leagueMembers)
+        .where(
+          and(
+            eq(leagueMembers.id, memberId),
+            eq(leagueMembers.leagueId, leagueId)
+          )
         )
-      )
-      .limit(1);
+        .limit(1);
+    }
 
     // Fallback: try looking up by userId (for PickRoster which passes Clerk user.id)
     if (!targetMember) {
