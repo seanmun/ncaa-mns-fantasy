@@ -170,7 +170,7 @@ export default function AdminPanel() {
     },
   });
 
-  // Stats Sync
+  // Stats Sync (daily batch — yesterday's games)
   const syncStatsMutation = useMutation({
     mutationFn: () =>
       apiFetch('/api/stats/sync', { method: 'POST' }),
@@ -180,6 +180,21 @@ export default function AdminPanel() {
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to sync stats');
+    },
+  });
+
+  // Live Sync (today's in-progress games)
+  const liveSyncMutation = useMutation({
+    mutationFn: () =>
+      apiFetch('/api/stats/live-sync?force=true', { method: 'POST' }),
+    onSuccess: (data: { data: { gamesFound: number; gamesPolled: number; statsUpserted: number } }) => {
+      const d = data.data;
+      toast.success(`Live sync: ${d.gamesFound} games found, ${d.gamesPolled} polled, ${d.statsUpserted} stats updated`);
+      queryClient.invalidateQueries({ queryKey: ['stats-status'] });
+      queryClient.invalidateQueries({ queryKey: ['todayGames'] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to live sync');
     },
   });
 
@@ -398,16 +413,28 @@ export default function AdminPanel() {
         {/* Stats Sync */}
         <SectionCard title="Stats Sync" icon={RefreshCw} delay={0.1}>
           <div className="space-y-4">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => syncStatsMutation.mutate()}
-              loading={syncStatsMutation.isPending}
-              className="w-full sm:w-auto"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Sync Stats from SportsRadar
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => liveSyncMutation.mutate()}
+                loading={liveSyncMutation.isPending}
+                className="w-full sm:w-auto"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Live Sync (Today's Games)
+              </Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => syncStatsMutation.mutate()}
+                loading={syncStatsMutation.isPending}
+                className="w-full sm:w-auto"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Daily Sync (Yesterday)
+              </Button>
+            </div>
             {syncStatus?.lastUpdated && (
               <p className="text-sm text-text-muted">
                 Last synced:{' '}
