@@ -11,7 +11,7 @@
   "crons": [
     {
       "path": "/api/stats/live-sync",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/30 * * * *"
     }
   ]
 }
