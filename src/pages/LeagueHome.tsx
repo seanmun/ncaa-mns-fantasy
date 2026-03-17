@@ -51,12 +51,10 @@ interface TodayGame {
   scheduledTime: string | null;
 }
 
-interface TodayGamesResponse {
-  data: {
-    games: TodayGame[];
-    lastSyncTime: string | null;
-    hasLiveGames: boolean;
-  };
+interface TodayGamesData {
+  games: TodayGame[];
+  lastSyncTime: string | null;
+  hasLiveGames: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -92,16 +90,16 @@ export default function LeagueHome() {
   });
 
   /* ---------- Fetch today's games ---------- */
-  const { data: todayData } = useQuery<TodayGamesResponse>({
+  const { data: todayData } = useQuery<TodayGamesData>({
     queryKey: ['todayGames'],
     queryFn: () => apiFetch('/api/stats/today'),
     staleTime: 30_000,
     refetchInterval: 30_000,
   });
 
-  const todayGames = todayData?.data?.games ?? [];
-  const lastSyncTime = todayData?.data?.lastSyncTime;
-  const hasLiveGames = todayData?.data?.hasLiveGames ?? false;
+  const todayGames = todayData?.games ?? [];
+  const lastSyncTime = todayData?.lastSyncTime;
+  const hasLiveGames = todayData?.hasLiveGames ?? false;
 
   const isAdmin = league?.adminId === currentUserId;
   const buyIn = league ? parseFloat(league.buyInAmount) : 0;
