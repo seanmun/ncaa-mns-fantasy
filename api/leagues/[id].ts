@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq, and, count } from 'drizzle-orm';
 import { verifyAuth } from '../_middleware.js';
 import { db, schema } from '../_db.js';
+import { updateLeagueSchema, parseBody } from '../_validation.js';
+import { checkRateLimit } from '../_rateLimit.js';
 
 const { leagues, leagueMembers } = schema;
 
@@ -119,31 +121,27 @@ async function handlePut(req: VercelRequest, res: VercelResponse, leagueId: stri
       return res.status(403).json({ error: 'Only the league admin can update settings' });
     }
 
-    const {
-      name,
-      visibility,
-      buyInAmount,
-      buyInCurrency,
-      cryptoWalletAddress,
-      cryptoWalletType,
-      maxMembers,
-      isLocked,
-    } = req.body || {};
+    const rl = checkRateLimit(`update-league:${userId}`, { limit: 10, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
+    }
+
+    const parsed = parseBody(updateLeagueSchema, req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error });
+    }
+
+    const { name, visibility, buyInAmount, buyInCurrency, cryptoWalletAddress, cryptoWalletType, maxMembers, isLocked } = parsed.data;
 
     const updates: Record<string, unknown> = {};
-    if (name !== undefined) updates.name = name.trim();
-    if (visibility !== undefined) {
-      if (!['public', 'private'].includes(visibility)) {
-        return res.status(400).json({ error: 'Visibility must be "public" or "private"' });
-      }
-      updates.visibility = visibility;
-    }
-    if (buyInAmount !== undefined) updates.buyInAmount = String(buyInAmount);
+    if (name !== undefined) updates.name = name;
+    if (visibility !== undefined) updates.visibility = visibility;
+    if (buyInAmount !== undefined) updates.buyInAmount = buyInAmount;
     if (buyInCurrency !== undefined) updates.buyInCurrency = buyInCurrency;
     if (cryptoWalletAddress !== undefined) updates.cryptoWalletAddress = cryptoWalletAddress;
     if (cryptoWalletType !== undefined) updates.cryptoWalletType = cryptoWalletType;
-    if (maxMembers !== undefined) updates.maxMembers = Number(maxMembers);
-    if (isLocked !== undefined) updates.isLocked = Boolean(isLocked);
+    if (maxMembers !== undefined) updates.maxMembers = maxMembers;
+    if (isLocked !== undefined) updates.isLocked = isLocked;
     updates.updatedAt = new Date();
 
     const [updated] = await db

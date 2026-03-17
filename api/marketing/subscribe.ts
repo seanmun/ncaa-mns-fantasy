@@ -3,6 +3,8 @@ import { verifyAuth } from '../_middleware.js';
 import { db } from '../_db.js';
 import { users, marketingSubscribers } from '../../src/lib/db/schema.js';
 import { eq } from 'drizzle-orm';
+import { marketingSubscribeSchema, parseBody } from '../_validation.js';
+import { checkRateLimit } from '../_rateLimit.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -14,7 +16,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { globalOptIn, mnsInsights, source } = req.body;
+  const rl = checkRateLimit(`subscribe:${userId}`, { limit: 10, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
+  }
+
+  const parsed = parseBody(marketingSubscribeSchema, req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error });
+  }
+
+  const { globalOptIn, mnsInsights, source } = parsed.data;
 
   // Get user email from users table
   const userRecord = await db

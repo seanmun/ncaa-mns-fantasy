@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq, and, count } from 'drizzle-orm';
 import { verifyAuth } from '../../_middleware.js';
 import { db, schema } from '../../_db.js';
+import { joinLeagueSchema, parseBody } from '../../_validation.js';
+import { checkRateLimit } from '../../_rateLimit.js';
 
 const { leagues, leagueMembers, users } = schema;
 
@@ -78,10 +80,17 @@ async function handlePost(req: VercelRequest, res: VercelResponse, inviteCode: s
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { teamName } = req.body || {};
-    if (!teamName || typeof teamName !== 'string' || teamName.trim().length === 0) {
-      return res.status(400).json({ error: 'Team name is required' });
+    const rl = checkRateLimit(`join-league:${userId}`, { limit: 10, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
     }
+
+    const parsed = parseBody(joinLeagueSchema, req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error });
+    }
+
+    const { teamName } = parsed.data;
 
     // Find the league
     const [league] = await db
@@ -124,7 +133,7 @@ async function handlePost(req: VercelRequest, res: VercelResponse, inviteCode: s
     await db.insert(leagueMembers).values({
       leagueId: league.id,
       userId,
-      teamName: teamName.trim(),
+      teamName,
     });
 
     return res.status(201).json({ data: { leagueId: league.id } });

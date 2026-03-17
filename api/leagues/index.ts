@@ -3,6 +3,8 @@ import { eq, and, sql, count } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { verifyAuth } from '../_middleware.js';
 import { db, schema } from '../_db.js';
+import { createLeagueSchema, parseBody } from '../_validation.js';
+import { checkRateLimit } from '../_rateLimit.js';
 
 const { leagues, leagueMembers } = schema;
 
@@ -62,27 +64,18 @@ async function handleGet(_req: VercelRequest, res: VercelResponse, userId: strin
 }
 
 async function handlePost(req: VercelRequest, res: VercelResponse, userId: string) {
-  try {
-    const {
-      name,
-      teamName,
-      visibility = 'private',
-      buyInAmount = '0',
-      buyInCurrency = 'USD',
-      cryptoWalletAddress,
-      cryptoWalletType,
-      maxMembers = 50,
-    } = req.body || {};
+  const rl = checkRateLimit(`create-league:${userId}`, { limit: 5, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
+  }
 
-    if (!name || typeof name !== 'string' || name.trim().length === 0) {
-      return res.status(400).json({ error: 'League name is required' });
-    }
-    if (!teamName || typeof teamName !== 'string' || teamName.trim().length === 0) {
-      return res.status(400).json({ error: 'Team name is required' });
-    }
-    if (!['public', 'private'].includes(visibility)) {
-      return res.status(400).json({ error: 'Visibility must be "public" or "private"' });
-    }
+  const parsed = parseBody(createLeagueSchema, req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error });
+  }
+
+  try {
+    const { name, teamName, visibility, buyInAmount, buyInCurrency, cryptoWalletAddress, cryptoWalletType, maxMembers } = parsed.data;
 
     const gameSlug = process.env.GAME_SLUG || 'ncaa-mens-2025';
     const inviteCode = nanoid(8).toUpperCase();
@@ -91,16 +84,16 @@ async function handlePost(req: VercelRequest, res: VercelResponse, userId: strin
     const [newLeague] = await db
       .insert(leagues)
       .values({
-        name: name.trim(),
+        name,
         adminId: userId,
         visibility,
-        buyInAmount: String(buyInAmount),
+        buyInAmount,
         buyInCurrency,
-        cryptoWalletAddress: cryptoWalletAddress || null,
-        cryptoWalletType: cryptoWalletType || null,
+        cryptoWalletAddress,
+        cryptoWalletType,
         gameSlug,
         inviteCode,
-        maxMembers: Number(maxMembers),
+        maxMembers,
       })
       .returning();
 
@@ -108,7 +101,7 @@ async function handlePost(req: VercelRequest, res: VercelResponse, userId: strin
     await db.insert(leagueMembers).values({
       leagueId: newLeague.id,
       userId,
-      teamName: teamName.trim(),
+      teamName,
     });
 
     return res.status(201).json({ data: newLeague });

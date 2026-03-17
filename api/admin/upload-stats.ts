@@ -3,6 +3,7 @@ import { eq, and } from 'drizzle-orm';
 import Papa from 'papaparse';
 import { verifyAuth, isAdmin } from '../_middleware.js';
 import { db, schema } from '../_db.js';
+import { checkRateLimit } from '../_rateLimit.js';
 
 const { players, playerTournamentStats } = schema;
 
@@ -29,6 +30,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (!isAdmin(userId)) {
     return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const rl = checkRateLimit(`admin-upload:${userId}`, { limit: 5, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
   }
 
   try {

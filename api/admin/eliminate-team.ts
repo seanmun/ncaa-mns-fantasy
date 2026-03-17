@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq } from 'drizzle-orm';
 import { verifyAuth, isAdmin } from '../_middleware.js';
 import { db, schema } from '../_db.js';
+import { eliminateTeamSchema, parseBody } from '../_validation.js';
+import { checkRateLimit } from '../_rateLimit.js';
 
 const { ncaaTeams } = schema;
 
@@ -19,14 +21,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { teamId, teamName, round } = req.body || {};
+    const rl = checkRateLimit(`admin:${userId}`, { limit: 20, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
+    }
 
-    if (!round || typeof round !== 'string') {
-      return res.status(400).json({ error: 'round is required' });
+    const parsed = parseBody(eliminateTeamSchema, req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error });
     }
-    if (!teamId && !teamName) {
-      return res.status(400).json({ error: 'teamId or teamName is required' });
-    }
+
+    const { teamId, teamName, round } = parsed.data;
 
     // Find team by ID or name
     const [team] = await db

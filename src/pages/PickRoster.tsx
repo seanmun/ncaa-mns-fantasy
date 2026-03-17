@@ -14,40 +14,18 @@ import {
   cn,
   isRosterLocked,
   getProjectedScore,
-  getRosterLockDate,
 } from '@/lib/utils';
 import { playClick, playSuccess, playDing } from '@/lib/sounds';
-import { format } from 'date-fns';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Lock, Search, X, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 
-/* ------------------------------------------------------------------ */
-/*  Tier metadata for styling                                         */
-/* ------------------------------------------------------------------ */
-
-const TIER_TEXT_COLOR: Record<number, string> = {
-  1: 'text-tier-1',
-  2: 'text-tier-2',
-  3: 'text-tier-3',
-  4: 'text-tier-4',
-};
-
-const TIER_BG_LOW: Record<number, string> = {
-  1: 'bg-tier-1/15',
-  2: 'bg-tier-2/15',
-  3: 'bg-tier-3/15',
-  4: 'bg-tier-4/15',
-};
-
-const TIER_BORDER_LEFT: Record<number, string> = {
-  1: 'border-l-tier-1',
-  2: 'border-l-tier-2',
-  3: 'border-l-tier-3',
-  4: 'border-l-tier-4',
-};
+import LockedRosterView from '@/components/roster/LockedRosterView';
+import RosterConfirmationView from '@/components/roster/RosterConfirmationView';
+import TierNavigationTabs from '@/components/roster/TierNavigationTabs';
+import PlayerListView from '@/components/roster/PlayerListView';
+import DesktopRosterSidebar from '@/components/roster/DesktopRosterSidebar';
+import MobileRosterView from '@/components/roster/MobileRosterView';
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                         */
@@ -130,7 +108,6 @@ export default function PickRoster() {
   // ---- Derived state -----------------------------------------------------
   const locked = isRosterLocked();
 
-  // Compute the "hot" threshold: top 10% projected score across ALL players
   const hotThreshold = useMemo(() => {
     if (allPlayers.length === 0) return Infinity;
     const scores = allPlayers
@@ -140,17 +117,14 @@ export default function PickRoster() {
     return scores[idx] ?? Infinity;
   }, [allPlayers]);
 
-  // Players grouped by tier, filtered & sorted
   const playersByTier = useMemo(() => {
     const map: Record<number, PlayerWithTeam[]> = { 1: [], 2: [], 3: [], 4: [] };
     for (const player of allPlayers) {
       const tier = getTierForSeed(player.team.seed);
       map[tier.tier]?.push(player);
     }
-    // Sort each tier based on current sort mode
     for (const tier of [1, 2, 3, 4]) {
       if (sortMode[tier] === 'team') {
-        // Sort by seed (best first), then by projected score within same team
         map[tier].sort((a, b) => {
           if (a.team.seed !== b.team.seed) return a.team.seed - b.team.seed;
           return (
@@ -169,7 +143,6 @@ export default function PickRoster() {
     return map;
   }, [allPlayers, sortMode]);
 
-  // Filtered players per tier
   const filteredPlayersByTier = useMemo(() => {
     const map: Record<number, PlayerWithTeam[]> = { 1: [], 2: [], 3: [], 4: [] };
     for (const tier of [1, 2, 3, 4]) {
@@ -190,7 +163,10 @@ export default function PickRoster() {
   const tierKey = (tier: number): keyof RosterPickState =>
     `tier${tier}` as keyof RosterPickState;
 
-  const pickCount = (tier: number) => picks[tierKey(tier)].length;
+  const pickCount = useCallback(
+    (tier: number) => picks[tierKey(tier)].length,
+    [picks],
+  );
 
   const totalPicks =
     picks.tier1.length +
@@ -234,7 +210,6 @@ export default function PickRoster() {
       const alreadySelected = current.some((p) => p.id === player.id);
 
       if (alreadySelected) {
-        // Deselect
         playClick();
         setPicks((prev) => ({
           ...prev,
@@ -243,17 +218,14 @@ export default function PickRoster() {
         return;
       }
 
-      // Don't exceed tier limit
       if (current.length >= tierConfig.picks) return;
 
       playClick();
       const newPicks = [...current, player];
       setPicks((prev) => ({ ...prev, [key]: newPicks }));
 
-      // Check if this tier is now complete
       if (newPicks.length === tierConfig.picks) {
         playDing();
-        // Auto-advance to next incomplete tier
         const nextTier = SEED_TIERS.find(
           (t) => t.tier > tier && picks[tierKey(t.tier)].length < t.picks
         );
@@ -280,7 +252,6 @@ export default function PickRoster() {
       });
     },
     onSuccess: () => {
-      // Fire confetti
       confetti({
         particleCount: 150,
         spread: 80,
@@ -294,7 +265,6 @@ export default function PickRoster() {
       queryClient.invalidateQueries({ queryKey: ['roster', leagueId] });
       queryClient.invalidateQueries({ queryKey: ['standings', leagueId] });
 
-      // Navigate after a brief pause so the user sees the confetti
       setTimeout(() => {
         navigate(`/leagues/${leagueId}`);
       }, 1800);
@@ -303,6 +273,51 @@ export default function PickRoster() {
       toast.error(error.message || 'Failed to save roster. Please try again.');
     },
   });
+
+  // ---- Event handlers for sub-components ---------------------------------
+  const handleTierClick = useCallback((tier: number) => {
+    playClick();
+    setActiveTier(tier);
+  }, []);
+
+  const handleMobileViewChange = useCallback((view: 'players' | 'team') => {
+    playClick();
+    setMobileView(view);
+  }, []);
+
+  const handleFilterChange = useCallback(
+    (value: string) => {
+      setFilters((prev) => ({ ...prev, [activeTier]: value }));
+    },
+    [activeTier],
+  );
+
+  const handleFilterClear = useCallback(() => {
+    setFilters((prev) => ({ ...prev, [activeTier]: '' }));
+  }, [activeTier]);
+
+  const handleSortModeChange = useCallback(
+    (mode: 'projected' | 'team') => {
+      setSortMode((prev) => ({ ...prev, [activeTier]: mode }));
+    },
+    [activeTier],
+  );
+
+  const handlePrevTier = useCallback(() => {
+    playClick();
+    setActiveTier((prev) => prev - 1);
+  }, []);
+
+  const handleNextTier = useCallback(() => {
+    playClick();
+    setActiveTier((prev) => prev + 1);
+  }, []);
+
+  const handleMobileTierSelect = useCallback((tier: number) => {
+    setActiveTier(tier);
+    setMobileView('players');
+    playClick();
+  }, []);
 
   // ---- Loading state -----------------------------------------------------
   if (playersLoading || rosterLoading) {
@@ -336,12 +351,7 @@ export default function PickRoster() {
   // ---- Locked / read-only state ------------------------------------------
   if (locked) {
     const rosterPlayers = existingRoster?.players ?? [];
-    const groupedByTier: Record<number, PlayerWithTeam[]> = {
-      1: [],
-      2: [],
-      3: [],
-      4: [],
-    };
+    const groupedByTier: Record<number, PlayerWithTeam[]> = { 1: [], 2: [], 3: [], 4: [] };
     for (const p of rosterPlayers) {
       const tier = getTierForSeed(p.team.seed);
       groupedByTier[tier.tier].push(p);
@@ -349,100 +359,26 @@ export default function PickRoster() {
 
     return (
       <PageTransition>
-        <div className="mx-auto max-w-5xl space-y-8 px-4 pb-16 pt-8">
-          <div className="flex items-center justify-center gap-2 rounded-xl border border-neon-red/30 bg-neon-red/10 px-6 py-3">
-            <Lock className="h-5 w-5 text-neon-red" />
-            <span className="font-display text-lg tracking-wide text-neon-red">
-              ROSTER LOCKED
-            </span>
-          </div>
+        <LockedRosterView
+          rosterPlayers={rosterPlayers}
+          groupedByTier={groupedByTier}
+        />
+      </PageTransition>
+    );
+  }
 
-          {/* Column headers */}
-          <div className="flex items-center gap-3 px-3 pb-1.5 text-[10px] uppercase tracking-wider text-text-muted font-mono">
-            <div className="flex-1">Player</div>
-            <span className="w-10 text-right hidden sm:block">PTS</span>
-            <span className="w-10 text-right hidden sm:block">REB</span>
-            <span className="w-10 text-right hidden sm:block">AST</span>
-            <span className="w-12 text-right">Proj</span>
-          </div>
-
-          {SEED_TIERS.map((tierConfig) => {
-            const tierPlayers = groupedByTier[tierConfig.tier];
-            if (tierPlayers.length === 0) return null;
-            return (
-              <section key={tierConfig.tier}>
-                <h2
-                  className={`mb-2 border-l-4 pl-3 font-display text-sm tracking-wide ${TIER_BORDER_LEFT[tierConfig.tier]} ${TIER_TEXT_COLOR[tierConfig.tier]}`}
-                >
-                  {tierConfig.label}
-                </h2>
-                <div className="divide-y divide-bg-border/40 rounded-xl border border-bg-border bg-bg-card overflow-hidden mb-4">
-                  {tierPlayers.map((player) => {
-                    const projScore = getProjectedScore(
-                      player.avgPts,
-                      player.avgReb,
-                      player.avgAst,
-                    );
-                    return (
-                      <div
-                        key={player.id}
-                        className={`flex items-center gap-3 px-3 py-2.5 border-l-4 ${TIER_BORDER_LEFT[tierConfig.tier]}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-text-primary truncate">
-                              {player.name}
-                            </span>
-                            {player.jersey && (
-                              <span className="shrink-0 font-mono text-[10px] text-text-muted">
-                                #{player.jersey}
-                              </span>
-                            )}
-                            <span className="shrink-0 text-xs text-text-muted">
-                              ({player.team.seed}) {player.team.shortName}
-                            </span>
-                            <span className="shrink-0 text-[10px] text-text-muted hidden sm:inline">
-                              {player.team.region}
-                            </span>
-                          </div>
-                        </div>
-                        <span className="w-10 text-right font-mono text-xs text-text-secondary hidden sm:block">
-                          {parseFloat(player.avgPts).toFixed(1)}
-                        </span>
-                        <span className="w-10 text-right font-mono text-xs text-text-secondary hidden sm:block">
-                          {parseFloat(player.avgReb).toFixed(1)}
-                        </span>
-                        <span className="w-10 text-right font-mono text-xs text-text-secondary hidden sm:block">
-                          {parseFloat(player.avgAst).toFixed(1)}
-                        </span>
-                        <span className="w-12 text-right font-mono text-sm font-bold text-text-primary">
-                          {projScore.toFixed(1)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            );
-          })}
-
-          {rosterPlayers.length > 0 && (
-            <div className="rounded-xl border border-neon-green/30 bg-bg-card px-4 py-4 flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                Projected Total
-              </span>
-              <span className="font-mono text-3xl font-bold text-neon-green">
-                {rosterPlayers
-                  .reduce(
-                    (sum, p) =>
-                      sum + getProjectedScore(p.avgPts, p.avgReb, p.avgAst),
-                    0,
-                  )
-                  .toFixed(1)}
-              </span>
-            </div>
-          )}
-        </div>
+  // ---- Full-page confirmation view ---------------------------------------
+  if (showConfirmModal) {
+    return (
+      <PageTransition>
+        <RosterConfirmationView
+          picks={picks}
+          projectedTotal={projectedTotal}
+          isEditMode={isEditMode}
+          isPending={submitMutation.isPending}
+          onGoBack={() => setShowConfirmModal(false)}
+          onConfirm={() => submitMutation.mutate()}
+        />
       </PageTransition>
     );
   }
@@ -454,703 +390,72 @@ export default function PickRoster() {
   const activeTierPlayers = filteredPlayersByTier[activeTier];
 
   // ---- Main pick interface -----------------------------------------------
-
-  // ---- Full-page confirmation view ---------------------------------------
-  if (showConfirmModal) {
-    return (
-      <PageTransition>
-        <div className="mx-auto max-w-lg px-4 py-8 pb-32">
-          <h1 className="text-center font-display text-2xl tracking-wide text-text-primary">
-            {isEditMode ? 'Update Your Roster' : 'Confirm Your Roster'}
-          </h1>
-
-          {/* Picks organized by tier */}
-          <div className="mt-8 space-y-6">
-            {SEED_TIERS.map((tierConfig) => {
-              const tierPicks = picks[tierKey(tierConfig.tier)];
-              if (tierPicks.length === 0) return null;
-              return (
-                <div key={tierConfig.tier}>
-                  <h3
-                    className={`mb-2 text-xs font-semibold uppercase tracking-wider ${TIER_TEXT_COLOR[tierConfig.tier]}`}
-                  >
-                    {tierConfig.label} &mdash; Seeds{' '}
-                    {tierConfig.seeds[0]}&ndash;
-                    {tierConfig.seeds[tierConfig.seeds.length - 1]}
-                  </h3>
-                  <ul className="space-y-1.5">
-                    {tierPicks.map((p) => (
-                      <li
-                        key={p.id}
-                        className="flex items-center justify-between rounded-lg bg-bg-card px-4 py-3 text-sm"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-text-primary font-medium">
-                            {p.name}
-                          </span>
-                          <span className="text-xs text-text-muted">
-                            {p.team.shortName}
-                          </span>
-                        </div>
-                        <span className="font-mono text-xs text-text-secondary">
-                          {getProjectedScore(
-                            p.avgPts,
-                            p.avgReb,
-                            p.avgAst,
-                          ).toFixed(1)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Projected total */}
-          <div className="mt-8 text-center">
-            <p className="text-xs uppercase tracking-wider text-text-muted">
-              Projected Total Score
-            </p>
-            <p className="mt-1 font-mono text-4xl font-bold text-neon-green">
-              {projectedTotal.toFixed(1)}
-            </p>
-          </div>
-
-          {/* Lock info */}
-          <p className="mt-4 text-center text-xs text-text-secondary">
-            You can edit your roster anytime before{' '}
-            <span className="font-semibold text-neon-orange">
-              {format(getRosterLockDate(), 'MMM d, yyyy h:mm a')}
-            </span>
-            .
-          </p>
-
-          {/* Buttons */}
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <button
-              type="button"
-              onClick={() => setShowConfirmModal(false)}
-              className="rounded-xl border border-bg-border bg-bg-card px-6 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-card-hover"
-            >
-              Go Back
-            </button>
-            <button
-              type="button"
-              disabled={submitMutation.isPending}
-              onClick={() => submitMutation.mutate()}
-              className="rounded-xl bg-neon-green px-6 py-3 text-sm font-semibold text-gray-900 transition-shadow hover:shadow-[0_0_20px_rgba(0,255,135,0.4)] disabled:opacity-50"
-            >
-              {submitMutation.isPending
-                ? isEditMode
-                  ? 'Updating...'
-                  : 'Confirming...'
-                : isEditMode
-                  ? 'Update Roster'
-                  : 'Confirm Roster'}
-            </button>
-          </div>
-        </div>
-      </PageTransition>
-    );
-  }
-
   return (
     <PageTransition>
       <div className="relative mx-auto max-w-5xl pb-40 md:pb-28">
-        {/* ============================================================= */}
-        {/*  TOP STICKY BAR — Tier Navigation Tabs                        */}
-        {/* ============================================================= */}
-        <div className="sticky top-[96px] z-40 border-b border-bg-border bg-bg-secondary/95 backdrop-blur-sm">
-          <div className="mx-auto max-w-5xl px-4">
-            <div className="flex items-center gap-1">
-              {SEED_TIERS.map((tierConfig) => {
-                const count = pickCount(tierConfig.tier);
-                const complete = count === tierConfig.picks;
-                const isActive = activeTier === tierConfig.tier;
+        {/* Top sticky bar -- Tier Navigation Tabs */}
+        <TierNavigationTabs
+          activeTier={activeTier}
+          totalPicks={totalPicks}
+          mobileView={mobileView}
+          pickCount={pickCount}
+          onTierClick={handleTierClick}
+          onMobileViewChange={handleMobileViewChange}
+        />
 
-                return (
-                  <button
-                    key={tierConfig.tier}
-                    type="button"
-                    onClick={() => {
-                      playClick();
-                      setActiveTier(tierConfig.tier);
-                    }}
-                    className={cn(
-                      'flex-1 py-3 text-center text-sm font-semibold transition-all duration-200 border-b-2',
-                      isActive
-                        ? `${TIER_TEXT_COLOR[tierConfig.tier]} border-current`
-                        : 'text-text-muted border-transparent hover:text-text-secondary',
-                      complete && !isActive && 'text-text-secondary',
-                    )}
-                  >
-                    <div className="flex items-center justify-center gap-1.5">
-                      {complete && <Check className="h-3.5 w-3.5" />}
-                      <span className="hidden sm:inline">{tierConfig.label}</span>
-                      <span className="sm:hidden">T{tierConfig.tier}</span>
-                      <span className="font-mono text-xs opacity-70">
-                        {count}/{tierConfig.picks}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Overall progress bar */}
-            <div className="h-0.5 w-full bg-bg-border">
-              <motion.div
-                className="h-full bg-neon-green"
-                initial={{ width: 0 }}
-                animate={{ width: `${(totalPicks / 10) * 100}%` }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        {/* Main content: Active tier + Desktop sidebar */}
+        <div className="flex gap-6 px-4 pt-6">
+          {/* Left: Active tier content */}
+          <div className="flex-1 min-w-0">
+            {/* Players view -- always visible on lg+, conditionally on mobile */}
+            <div className={cn(mobileView === 'team' && 'hidden lg:block')}>
+              <PlayerListView
+                activeTier={activeTier}
+                activeTierConfig={activeTierConfig}
+                activeTierFull={activeTierFull}
+                activeTierPlayers={activeTierPlayers}
+                filter={filters[activeTier]}
+                sortMode={sortMode[activeTier]}
+                hotThreshold={hotThreshold}
+                isPlayerSelected={isPlayerSelected}
+                onFilterChange={handleFilterChange}
+                onFilterClear={handleFilterClear}
+                onSortModeChange={handleSortModeChange}
+                onPick={handlePick}
+                onPrevTier={handlePrevTier}
+                onNextTier={handleNextTier}
               />
             </div>
 
-            {/* Mobile view toggle — Players vs My Team */}
-            <div className="flex lg:hidden border-t border-bg-border">
-              <button
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setMobileView('players');
-                }}
-                className={cn(
-                  'flex-1 py-2.5 text-center text-xs font-semibold uppercase tracking-wider transition-colors border-b-2',
-                  mobileView === 'players'
-                    ? 'text-neon-green border-neon-green'
-                    : 'text-text-muted border-transparent hover:text-text-secondary',
-                )}
-              >
-                Players
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  playClick();
-                  setMobileView('team');
-                }}
-                className={cn(
-                  'flex-1 py-2.5 text-center text-xs font-semibold uppercase tracking-wider transition-colors border-b-2',
-                  mobileView === 'team'
-                    ? 'text-neon-green border-neon-green'
-                    : 'text-text-muted border-transparent hover:text-text-secondary',
-                )}
-              >
-                <span className="inline-flex items-center justify-center gap-1.5">
-                  <Users className="h-3.5 w-3.5" />
-                  My Team
-                  {totalPicks > 0 && (
-                    <span className="font-mono text-[10px] opacity-70">
-                      {totalPicks}/10
-                    </span>
-                  )}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ============================================================= */}
-        {/*  MAIN CONTENT: Active tier + Desktop sidebar                   */}
-        {/* ============================================================= */}
-        <div className="flex gap-6 px-4 pt-6">
-          {/* ---------- LEFT: Active tier content ---------- */}
-          <div className="flex-1 min-w-0">
-            {/* PLAYERS VIEW — always visible on lg+, conditionally on mobile */}
-            <div className={cn(mobileView === 'team' && 'hidden lg:block')}>
-            <section>
-              {/* Tier header */}
-              <div className={`mb-4 border-l-4 pl-4 ${TIER_BORDER_LEFT[activeTier]}`}>
-                <h2
-                  className={`font-display text-xl tracking-wide sm:text-2xl ${TIER_TEXT_COLOR[activeTier]}`}
-                >
-                  TIER {activeTier} &mdash; Seeds{' '}
-                  {activeTierConfig.seeds[0]}&ndash;
-                  {activeTierConfig.seeds[activeTierConfig.seeds.length - 1]}
-                </h2>
-                <p className="mt-0.5 text-sm text-text-secondary">
-                  Pick{' '}
-                  <span
-                    className={`font-mono font-bold ${TIER_TEXT_COLOR[activeTier]}`}
-                  >
-                    {activeTierConfig.picks}
-                  </span>{' '}
-                  player{activeTierConfig.picks > 1 ? 's' : ''}
-                  {activeTierFull && (
-                    <span className="ml-2 inline-flex items-center gap-1 text-xs text-neon-green">
-                      <Check className="h-3 w-3" /> Complete
-                    </span>
-                  )}
-                </p>
-              </div>
-
-              {/* Search + Sort row */}
-              <div className="mb-4 flex items-center gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                  <input
-                    type="text"
-                    placeholder="Filter by team or player..."
-                    value={filters[activeTier]}
-                    onChange={(e) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        [activeTier]: e.target.value,
-                      }))
-                    }
-                    className="w-full rounded-lg border border-bg-border bg-bg-card py-2 pl-9 pr-9 text-sm text-text-primary placeholder-text-muted outline-none transition-colors focus:border-bg-card-hover focus:ring-1 focus:ring-neon-green/30"
-                  />
-                  {filters[activeTier] && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          [activeTier]: '',
-                        }))
-                      }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted transition-colors hover:text-text-primary"
-                      aria-label="Clear filter"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Sort toggle */}
-                <div className="flex shrink-0 items-center rounded-lg border border-bg-border bg-bg-card">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSortMode((prev) => ({ ...prev, [activeTier]: 'projected' }))
-                    }
-                    className={cn(
-                      'px-3 py-2 text-xs font-semibold transition-colors rounded-l-lg',
-                      sortMode[activeTier] === 'projected'
-                        ? 'bg-neon-green/15 text-neon-green'
-                        : 'text-text-muted hover:text-text-secondary',
-                    )}
-                  >
-                    Points
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSortMode((prev) => ({ ...prev, [activeTier]: 'team' }))
-                    }
-                    className={cn(
-                      'px-3 py-2 text-xs font-semibold transition-colors rounded-r-lg',
-                      sortMode[activeTier] === 'team'
-                        ? 'bg-neon-green/15 text-neon-green'
-                        : 'text-text-muted hover:text-text-secondary',
-                    )}
-                  >
-                    Team
-                  </button>
-                </div>
-              </div>
-
-              {/* Player list — single tier at a time */}
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeTier}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {activeTierPlayers.length === 0 ? (
-                    <p className="py-6 text-center text-sm text-text-muted">
-                      No players match your filter.
-                    </p>
-                  ) : (
-                    <div>
-                      {/* Column headers */}
-                      <div className="flex items-center gap-3 px-3 pb-1.5 text-[10px] uppercase tracking-wider text-text-muted font-mono">
-                        <div className="flex-1">Player</div>
-                        <span className="w-10 text-right hidden sm:block">PTS</span>
-                        <span className="w-10 text-right hidden sm:block">REB</span>
-                        <span className="w-10 text-right hidden sm:block">AST</span>
-                        <span className="w-12 text-right">Proj</span>
-                      </div>
-
-                      {(() => {
-                        // Group by team when in team sort mode
-                        const isTeamMode = sortMode[activeTier] === 'team';
-                        const teamSections: { teamId: string; teamName: string; seed: number; region: string; players: typeof activeTierPlayers }[] = [];
-
-                        if (isTeamMode) {
-                          const seen = new Map<string, typeof teamSections[0]>();
-                          for (const p of activeTierPlayers) {
-                            if (!seen.has(p.team.id)) {
-                              const section = { teamId: p.team.id, teamName: p.team.name, seed: p.team.seed, region: p.team.region, players: [] as typeof activeTierPlayers };
-                              seen.set(p.team.id, section);
-                              teamSections.push(section);
-                            }
-                            seen.get(p.team.id)!.players.push(p);
-                          }
-                        }
-
-                        const renderRow = (player: PlayerWithTeam) => {
-                          const selected = isPlayerSelected(player.id);
-                          const disabled = activeTierFull && !selected;
-                          const projScore = getProjectedScore(
-                            player.avgPts,
-                            player.avgReb,
-                            player.avgAst,
-                          );
-                          const hot = projScore >= hotThreshold;
-
-                          return (
-                            <button
-                              key={player.id}
-                              type="button"
-                              onClick={() => handlePick(player, activeTier)}
-                              disabled={disabled}
-                              className={cn(
-                                'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors',
-                                selected
-                                  ? `${TIER_BG_LOW[activeTier]} border-l-4 ${TIER_BORDER_LEFT[activeTier]}`
-                                  : 'border-l-4 border-l-transparent hover:bg-bg-card-hover',
-                                disabled && !selected && 'opacity-35 cursor-not-allowed',
-                              )}
-                            >
-                              {/* Player info */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-semibold text-text-primary truncate">
-                                    {player.name}
-                                  </span>
-                                  {player.jersey && (
-                                    <span className="shrink-0 font-mono text-[10px] text-text-muted">
-                                      #{player.jersey}
-                                    </span>
-                                  )}
-                                  {!isTeamMode && (
-                                    <span className="shrink-0 text-xs text-text-muted">
-                                      {player.team.shortName}
-                                    </span>
-                                  )}
-                                  <span className="shrink-0 text-[10px] text-text-muted hidden sm:inline">
-                                    {player.team.region}
-                                  </span>
-                                  {hot && (
-                                    <span className="shrink-0 text-xs" aria-label="Hot pick">
-                                      {'🔥'}
-                                    </span>
-                                  )}
-                                  {selected && (
-                                    <Check className={`shrink-0 h-3.5 w-3.5 ${TIER_TEXT_COLOR[activeTier]}`} />
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Season averages */}
-                              <span className="w-10 text-right font-mono text-xs text-text-secondary hidden sm:block">
-                                {parseFloat(player.avgPts).toFixed(1)}
-                              </span>
-                              <span className="w-10 text-right font-mono text-xs text-text-secondary hidden sm:block">
-                                {parseFloat(player.avgReb).toFixed(1)}
-                              </span>
-                              <span className="w-10 text-right font-mono text-xs text-text-secondary hidden sm:block">
-                                {parseFloat(player.avgAst).toFixed(1)}
-                              </span>
-
-                              {/* Projected */}
-                              <span className="w-12 text-right font-mono text-sm font-bold text-text-primary">
-                                {projScore.toFixed(1)}
-                              </span>
-                            </button>
-                          );
-                        };
-
-                        if (isTeamMode) {
-                          return (
-                            <div className="space-y-3">
-                              {teamSections.map((section) => (
-                                <div key={section.teamId}>
-                                  <div className="flex items-center gap-2 px-3 py-1.5 text-xs">
-                                    <span className="font-mono font-bold text-text-muted">({section.seed})</span>
-                                    <span className="font-semibold text-text-primary">{section.teamName}</span>
-                                    <span className="text-text-muted">{section.region}</span>
-                                  </div>
-                                  <div className="divide-y divide-bg-border/40 rounded-xl border border-bg-border bg-bg-card overflow-hidden">
-                                    {section.players.map(renderRow)}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <div className="divide-y divide-bg-border/40 rounded-xl border border-bg-border bg-bg-card overflow-hidden">
-                            {activeTierPlayers.map(renderRow)}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-
-              {/* Prev / Next tier navigation */}
-              <div className="mt-6 flex items-center justify-between">
-                {activeTier > 1 ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playClick();
-                      setActiveTier((prev) => prev - 1);
-                    }}
-                    className="flex items-center gap-2 rounded-xl border border-bg-border bg-bg-card px-4 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-card-hover"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Tier {activeTier - 1}
-                  </button>
-                ) : (
-                  <div />
-                )}
-
-                {activeTier < 4 ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playClick();
-                      setActiveTier((prev) => prev + 1);
-                    }}
-                    className={cn(
-                      'flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors',
-                      activeTierFull
-                        ? `${TIER_BG_LOW[activeTier + 1]} ${TIER_TEXT_COLOR[activeTier + 1]} border border-transparent`
-                        : 'border border-bg-border bg-bg-card text-text-primary hover:bg-bg-card-hover',
-                    )}
-                  >
-                    Tier {activeTier + 1}
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                ) : (
-                  <div />
-                )}
-              </div>
-            </section>
-            </div>
-
-            {/* MY TEAM VIEW — mobile only */}
+            {/* My Team view -- mobile only */}
             <div className={cn(mobileView === 'players' ? 'hidden' : 'block lg:hidden')}>
-              <div className="space-y-4 pt-2">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <h3 className="font-display text-lg uppercase tracking-wider text-text-primary">
-                    Your Picks
-                    <span className="ml-2 font-mono text-sm text-text-muted">
-                      {totalPicks}/10
-                    </span>
-                  </h3>
-                  {totalPicks > 0 && (
-                    <div className="text-right">
-                      <p className="text-[10px] uppercase tracking-wider text-text-muted">
-                        Projected
-                      </p>
-                      <p className="font-mono text-lg font-bold text-neon-green">
-                        {projectedTotal.toFixed(1)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Picks by tier */}
-                {SEED_TIERS.map((tierConfig) => {
-                  const tierPicks = picks[tierKey(tierConfig.tier)];
-                  const slots = tierConfig.picks;
-
-                  return (
-                    <div key={tierConfig.tier}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveTier(tierConfig.tier);
-                          setMobileView('players');
-                          playClick();
-                        }}
-                        className={cn(
-                          'mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider transition-colors',
-                          TIER_TEXT_COLOR[tierConfig.tier],
-                        )}
-                      >
-                        <span>{tierConfig.label}</span>
-                        <span className="font-mono opacity-70">
-                          {tierPicks.length}/{slots}
-                        </span>
-                        {tierPicks.length < slots && (
-                          <span className="text-[10px] normal-case text-text-muted">
-                            — tap to pick
-                          </span>
-                        )}
-                      </button>
-
-                      <div className="space-y-1.5">
-                        {tierPicks.map((p) => {
-                          const projScore = getProjectedScore(
-                            p.avgPts,
-                            p.avgReb,
-                            p.avgAst,
-                          );
-                          return (
-                            <div
-                              key={p.id}
-                              className={cn(
-                                'flex items-center justify-between rounded-xl px-3 py-2.5',
-                                TIER_BG_LOW[tierConfig.tier],
-                              )}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-sm font-semibold text-text-primary truncate">
-                                  {p.name}
-                                </span>
-                                <span className="shrink-0 text-xs text-text-muted">
-                                  {p.team.shortName}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-3 shrink-0">
-                                <span className="font-mono text-xs text-text-secondary">
-                                  {projScore.toFixed(1)}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handlePick(p, tierConfig.tier)}
-                                  className="rounded-full p-1 opacity-60 transition-opacity hover:opacity-100 hover:bg-bg-card-hover"
-                                  aria-label={`Remove ${p.name}`}
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                        {/* Empty slot indicators */}
-                        {Array.from({ length: slots - tierPicks.length }).map(
-                          (_, i) => (
-                            <button
-                              key={`empty-${tierConfig.tier}-${i}`}
-                              type="button"
-                              onClick={() => {
-                                setActiveTier(tierConfig.tier);
-                                setMobileView('players');
-                                playClick();
-                              }}
-                              className="flex w-full items-center rounded-xl border border-dashed border-bg-border px-3 py-2.5 text-sm text-text-muted transition-colors hover:border-text-muted hover:text-text-secondary"
-                            >
-                              + Pick a player
-                            </button>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <MobileRosterView
+                picks={picks}
+                totalPicks={totalPicks}
+                projectedTotal={projectedTotal}
+                onTierSelect={handleMobileTierSelect}
+                onRemovePlayer={handlePick}
+              />
             </div>
           </div>
 
-          {/* ---------- RIGHT: Desktop sidebar — Selected picks ---------- */}
-          <div className="hidden lg:block lg:w-72 shrink-0">
-            <div className="sticky top-[160px]">
-              <div className="rounded-xl border border-bg-border bg-bg-card p-4 space-y-4">
-                <h3 className="font-display text-sm uppercase tracking-wider text-text-primary">
-                  Your Picks
-                  <span className="ml-2 font-mono text-xs text-text-muted">
-                    {totalPicks}/10
-                  </span>
-                </h3>
-
-                {SEED_TIERS.map((tierConfig) => {
-                  const tierPicks = picks[tierKey(tierConfig.tier)];
-                  const slots = tierConfig.picks;
-
-                  return (
-                    <div key={tierConfig.tier}>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTier(tierConfig.tier)}
-                        className={cn(
-                          'mb-1.5 text-xs font-semibold uppercase tracking-wider transition-colors hover:opacity-100',
-                          TIER_TEXT_COLOR[tierConfig.tier],
-                          activeTier === tierConfig.tier
-                            ? 'opacity-100'
-                            : 'opacity-60',
-                        )}
-                      >
-                        {tierConfig.label} ({tierPicks.length}/{slots})
-                      </button>
-
-                      <div className="space-y-1">
-                        {tierPicks.map((p) => (
-                          <div
-                            key={p.id}
-                            className={`flex items-center justify-between rounded-lg px-2 py-1.5 text-xs ${TIER_BG_LOW[tierConfig.tier]}`}
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="truncate text-text-primary">
-                                {p.name}
-                              </span>
-                              <span className="shrink-0 text-text-muted">
-                                {p.team.shortName}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handlePick(p, tierConfig.tier)}
-                              className="shrink-0 ml-1 opacity-50 hover:opacity-100 transition-opacity"
-                              aria-label={`Remove ${p.name}`}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-
-                        {/* Empty slot indicators */}
-                        {Array.from({ length: slots - tierPicks.length }).map(
-                          (_, i) => (
-                            <div
-                              key={`empty-${i}`}
-                              className="flex items-center rounded-lg border border-dashed border-bg-border px-2 py-1.5 text-xs text-text-muted"
-                            >
-                              Empty slot
-                            </div>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Projected total */}
-                {totalPicks > 0 && (
-                  <div className="border-t border-bg-border pt-3 text-center">
-                    <p className="text-xs text-text-muted">Projected Total</p>
-                    <p className="font-mono text-xl font-bold text-neon-green">
-                      {projectedTotal.toFixed(1)}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          {/* Right: Desktop sidebar -- Selected picks */}
+          <DesktopRosterSidebar
+            picks={picks}
+            activeTier={activeTier}
+            totalPicks={totalPicks}
+            projectedTotal={projectedTotal}
+            onTierClick={setActiveTier}
+            onRemovePlayer={handlePick}
+          />
         </div>
 
-        {/* ============================================================= */}
-        {/*  BOTTOM STICKY BAR                                             */}
-        {/* ============================================================= */}
+        {/* Bottom sticky bar */}
         <div
           className="fixed inset-x-0 md:bottom-0 z-40 border-t border-bg-border bg-bg-secondary/95 backdrop-blur-sm"
           style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
         >
           <div className="mx-auto max-w-5xl px-4 py-2">
-            {/* Action row */}
             <div className="flex items-center justify-between gap-4">
               <p className="font-mono text-sm text-text-secondary">
                 <span
@@ -1180,7 +485,6 @@ export default function PickRoster() {
             </div>
           </div>
         </div>
-
       </div>
     </PageTransition>
   );

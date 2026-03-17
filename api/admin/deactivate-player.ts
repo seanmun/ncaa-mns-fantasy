@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq, ilike } from 'drizzle-orm';
 import { verifyAuth, isAdmin } from '../_middleware.js';
 import { db, schema } from '../_db.js';
+import { deactivatePlayerSchema, parseBody } from '../_validation.js';
+import { checkRateLimit } from '../_rateLimit.js';
 
 const { players } = schema;
 
@@ -19,11 +21,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { playerName, playerId, reactivate } = req.body || {};
-
-    if (!playerName && !playerId) {
-      return res.status(400).json({ error: 'playerName or playerId is required' });
+    const rl = checkRateLimit(`admin:${userId}`, { limit: 20, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
     }
+
+    const parsed = parseBody(deactivatePlayerSchema, req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error });
+    }
+
+    const { playerName, playerId, reactivate } = parsed.data;
 
     // Find player by ID or name (case-insensitive)
     const [player] = await db

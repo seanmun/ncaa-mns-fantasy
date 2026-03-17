@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq } from 'drizzle-orm';
 import { verifyAuth } from '../../_middleware.js';
 import { db, schema } from '../../_db.js';
+import { lockLeagueSchema, parseBody } from '../../_validation.js';
+import { checkRateLimit } from '../../_rateLimit.js';
 
 const { leagues } = schema;
 
@@ -35,10 +37,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(403).json({ error: 'Only the league admin can lock/unlock rosters' });
     }
 
-    const { isLocked } = req.body || {};
-    if (typeof isLocked !== 'boolean') {
-      return res.status(400).json({ error: 'isLocked (boolean) is required' });
+    const rl = checkRateLimit(`lock-league:${userId}`, { limit: 10, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
     }
+
+    const parsed = parseBody(lockLeagueSchema, req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error });
+    }
+
+    const { isLocked } = parsed.data;
 
     const [updated] = await db
       .update(leagues)

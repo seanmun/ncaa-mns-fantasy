@@ -3,6 +3,8 @@ import { verifyAuth } from '../_middleware.js';
 import { db } from '../_db.js';
 import { marketingGamePrefs } from '../../src/lib/db/schema.js';
 import { eq, and } from 'drizzle-orm';
+import { gamePrefsSchema, parseBody } from '../_validation.js';
+import { checkRateLimit } from '../_rateLimit.js';
 
 const GAME_SLUG = process.env.GAME_SLUG || 'ncaa-mens-2025';
 
@@ -39,13 +41,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // PUT — update preferences
   if (req.method === 'PUT') {
+    const rl = checkRateLimit(`game-prefs:${userId}`, { limit: 20, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
+    }
+
+    const parsed = parseBody(gamePrefsSchema, req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error });
+    }
+
     const {
       prefMorningUpdates,
       prefEliminationAlerts,
       prefScoreAlerts,
       prefRosterReminders,
       optedOutOfGame,
-    } = req.body;
+    } = parsed.data;
 
     await db
       .insert(marketingGamePrefs)

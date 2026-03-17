@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { verifyAuth } from '../../_middleware.js';
 import { db, schema } from '../../_db.js';
+import { saveRosterSchema, parseBody } from '../../_validation.js';
+import { checkRateLimit } from '../../_rateLimit.js';
 
 const { leagues, leagueMembers, rosters, players, ncaaTeams } = schema;
 
@@ -65,17 +67,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(403).json({ error: 'Not a member of this league' });
     }
 
-    const { playerIds } = req.body || {};
-
-    if (!Array.isArray(playerIds) || playerIds.length !== 10) {
-      return res.status(400).json({ error: 'Exactly 10 player IDs are required' });
+    const rl = checkRateLimit(`save-roster:${userId}`, { limit: 10, windowMs: 60_000 });
+    if (!rl.allowed) {
+      return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
     }
 
-    // Check for duplicates
-    const uniqueIds = new Set(playerIds);
-    if (uniqueIds.size !== 10) {
-      return res.status(400).json({ error: 'Duplicate player IDs are not allowed' });
+    const parsed = parseBody(saveRosterSchema, req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error });
     }
+
+    const { playerIds } = parsed.data;
 
     // Fetch all selected players with their team info
     const selectedPlayers = await db
