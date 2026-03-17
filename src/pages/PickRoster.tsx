@@ -21,7 +21,7 @@ import { format } from 'date-fns';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Lock, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, Lock, Search, X, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 
 /* ------------------------------------------------------------------ */
@@ -81,6 +81,7 @@ export default function PickRoster() {
     4: 'projected',
   });
   const [isEditMode, setIsEditMode] = useState(false);
+  const [mobileView, setMobileView] = useState<'players' | 'team'>('players');
   const hasPrePopulated = useRef(false);
   const queryClient = useQueryClient();
 
@@ -505,6 +506,48 @@ export default function PickRoster() {
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               />
             </div>
+
+            {/* Mobile view toggle — Players vs My Team */}
+            <div className="flex lg:hidden border-t border-bg-border">
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setMobileView('players');
+                }}
+                className={cn(
+                  'flex-1 py-2.5 text-center text-xs font-semibold uppercase tracking-wider transition-colors border-b-2',
+                  mobileView === 'players'
+                    ? 'text-neon-green border-neon-green'
+                    : 'text-text-muted border-transparent hover:text-text-secondary',
+                )}
+              >
+                Players
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  setMobileView('team');
+                }}
+                className={cn(
+                  'flex-1 py-2.5 text-center text-xs font-semibold uppercase tracking-wider transition-colors border-b-2',
+                  mobileView === 'team'
+                    ? 'text-neon-green border-neon-green'
+                    : 'text-text-muted border-transparent hover:text-text-secondary',
+                )}
+              >
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  My Team
+                  {totalPicks > 0 && (
+                    <span className="font-mono text-[10px] opacity-70">
+                      {totalPicks}/10
+                    </span>
+                  )}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -514,6 +557,8 @@ export default function PickRoster() {
         <div className="flex gap-6 px-4 pt-6">
           {/* ---------- LEFT: Active tier content ---------- */}
           <div className="flex-1 min-w-0">
+            {/* PLAYERS VIEW — always visible on lg+, conditionally on mobile */}
+            <div className={cn(mobileView === 'team' && 'hidden lg:block')}>
             <section>
               {/* Tier header */}
               <div className={`mb-4 border-l-4 pl-4 ${TIER_BORDER_LEFT[activeTier]}`}>
@@ -790,6 +835,124 @@ export default function PickRoster() {
                 )}
               </div>
             </section>
+            </div>
+
+            {/* MY TEAM VIEW — mobile only */}
+            <div className={cn(mobileView === 'players' ? 'hidden' : 'block lg:hidden')}>
+              <div className="space-y-4 pt-2">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display text-lg uppercase tracking-wider text-text-primary">
+                    Your Picks
+                    <span className="ml-2 font-mono text-sm text-text-muted">
+                      {totalPicks}/10
+                    </span>
+                  </h3>
+                  {totalPicks > 0 && (
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase tracking-wider text-text-muted">
+                        Projected
+                      </p>
+                      <p className="font-mono text-lg font-bold text-neon-green">
+                        {projectedTotal.toFixed(1)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Picks by tier */}
+                {SEED_TIERS.map((tierConfig) => {
+                  const tierPicks = picks[tierKey(tierConfig.tier)];
+                  const slots = tierConfig.picks;
+
+                  return (
+                    <div key={tierConfig.tier}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTier(tierConfig.tier);
+                          setMobileView('players');
+                          playClick();
+                        }}
+                        className={cn(
+                          'mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider transition-colors',
+                          TIER_TEXT_COLOR[tierConfig.tier],
+                        )}
+                      >
+                        <span>{tierConfig.label}</span>
+                        <span className="font-mono opacity-70">
+                          {tierPicks.length}/{slots}
+                        </span>
+                        {tierPicks.length < slots && (
+                          <span className="text-[10px] normal-case text-text-muted">
+                            — tap to pick
+                          </span>
+                        )}
+                      </button>
+
+                      <div className="space-y-1.5">
+                        {tierPicks.map((p) => {
+                          const projScore = getProjectedScore(
+                            p.avgPts,
+                            p.avgReb,
+                            p.avgAst,
+                          );
+                          return (
+                            <div
+                              key={p.id}
+                              className={cn(
+                                'flex items-center justify-between rounded-xl px-3 py-2.5',
+                                TIER_BG_LOW[tierConfig.tier],
+                              )}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-sm font-semibold text-text-primary truncate">
+                                  {p.name}
+                                </span>
+                                <span className="shrink-0 text-xs text-text-muted">
+                                  {p.team.shortName}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 shrink-0">
+                                <span className="font-mono text-xs text-text-secondary">
+                                  {projScore.toFixed(1)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handlePick(p, tierConfig.tier)}
+                                  className="rounded-full p-1 opacity-60 transition-opacity hover:opacity-100 hover:bg-bg-card-hover"
+                                  aria-label={`Remove ${p.name}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Empty slot indicators */}
+                        {Array.from({ length: slots - tierPicks.length }).map(
+                          (_, i) => (
+                            <button
+                              key={`empty-${tierConfig.tier}-${i}`}
+                              type="button"
+                              onClick={() => {
+                                setActiveTier(tierConfig.tier);
+                                setMobileView('players');
+                                playClick();
+                              }}
+                              className="flex w-full items-center rounded-xl border border-dashed border-bg-border px-3 py-2.5 text-sm text-text-muted transition-colors hover:border-text-muted hover:text-text-secondary"
+                            >
+                              + Pick a player
+                            </button>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* ---------- RIGHT: Desktop sidebar — Selected picks ---------- */}
@@ -883,30 +1046,35 @@ export default function PickRoster() {
         {/* ============================================================= */}
         <div className="fixed inset-x-0 bottom-[60px] md:bottom-0 z-40 border-t border-bg-border bg-bg-secondary/95 backdrop-blur-sm">
           <div className="mx-auto max-w-5xl px-4 py-3">
-            {/* Pick chips row — mobile only */}
+            {/* Quick team indicator — mobile only */}
             {totalPicks > 0 && (
-              <div className="mb-2.5 flex flex-wrap gap-1.5 lg:hidden">
-                {SEED_TIERS.map((tierConfig) =>
-                  picks[tierKey(tierConfig.tier)].map((p) => (
-                    <motion.span
-                      key={p.id}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${TIER_BG_LOW[tierConfig.tier]} ${TIER_TEXT_COLOR[tierConfig.tier]}`}
-                    >
-                      {p.name.split(' ').slice(-1)[0]}
-                      <button
-                        type="button"
-                        onClick={() => handlePick(p, tierConfig.tier)}
-                        className="ml-0.5 opacity-60 transition-opacity hover:opacity-100"
-                        aria-label={`Remove ${p.name}`}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </motion.span>
-                  )),
-                )}
+              <div className="mb-2 lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => setMobileView('team')}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg py-1.5 text-xs text-text-muted transition-colors hover:text-text-secondary"
+                >
+                  <span className="flex gap-1">
+                    {SEED_TIERS.map((tierConfig) => {
+                      const count = pickCount(tierConfig.tier);
+                      const full = count === tierConfig.picks;
+                      return (
+                        <span
+                          key={tierConfig.tier}
+                          className={cn(
+                            'inline-flex h-5 w-5 items-center justify-center rounded-full font-mono text-[10px] font-bold',
+                            full
+                              ? `${TIER_BG_LOW[tierConfig.tier]} ${TIER_TEXT_COLOR[tierConfig.tier]}`
+                              : 'bg-bg-card text-text-muted',
+                          )}
+                        >
+                          {count}
+                        </span>
+                      );
+                    })}
+                  </span>
+                  <span>View Team</span>
+                </button>
               </div>
             )}
 
