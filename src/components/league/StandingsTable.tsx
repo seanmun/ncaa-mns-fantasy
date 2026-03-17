@@ -73,7 +73,7 @@ export function StandingsTable({
             </th>
             <th
               scope="col"
-              className="sticky left-[72px] z-10 bg-bg-card px-4 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted"
+              className="sticky left-[72px] z-10 bg-bg-card px-4 py-3 text-xs font-semibold uppercase tracking-wider text-text-muted shadow-[2px_0_4px_rgba(0,0,0,0.3)]"
             >
               Team
             </th>
@@ -144,7 +144,7 @@ export function StandingsTable({
                 )}
               >
                 {/* Rank */}
-                <td className="sticky left-0 z-10 bg-inherit px-4 py-3 font-mono text-sm font-bold text-text-primary">
+                <td className="sticky left-0 z-10 bg-bg-card px-4 py-3 font-mono text-sm font-bold text-text-primary">
                   <span className="flex items-center gap-1.5">
                     {entry.rank === 1 && (
                       <span aria-label="First place">{'🏆'}</span>
@@ -156,7 +156,7 @@ export function StandingsTable({
                 {/* Team name */}
                 <td
                   className={cn(
-                    'sticky left-[72px] z-10 bg-inherit px-4 py-3 font-semibold',
+                    'sticky left-[72px] z-10 bg-bg-card px-4 py-3 font-semibold shadow-[2px_0_4px_rgba(0,0,0,0.3)]',
                     isCurrentUser ? 'text-neon-green' : 'text-text-primary',
                   )}
                 >

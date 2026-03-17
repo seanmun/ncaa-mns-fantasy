@@ -178,13 +178,12 @@ export default function MemberRoster() {
             ) : grouped ? (
               <>
                 {/* Stat column headers */}
-                <div className="flex items-center gap-3 px-2 pb-1">
-                  <div className="flex-1" />
-                  <div className="flex items-center gap-4 shrink-0 font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                    <span className="w-8 text-right">PTS</span>
-                    <span className="w-8 text-right">REB</span>
-                    <span className="w-8 text-right">AST</span>
-                    <span className="w-10 text-right">TOT</span>
+                <div className="flex justify-end px-2 pb-1">
+                  <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-text-muted">
+                    <span>PTS</span>
+                    <span>REB</span>
+                    <span>AST</span>
+                    <span>TOT</span>
                   </div>
                 </div>
 
@@ -213,59 +212,47 @@ export default function MemberRoster() {
                             <div
                               key={player.id}
                               className={cn(
-                                'flex items-center gap-3 py-2.5 px-2',
+                                'py-2.5 px-2',
                                 (eliminated || injured) && 'opacity-40',
                               )}
                             >
-                              {/* Player info */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className={cn(
-                                      'text-sm font-semibold text-text-primary truncate',
-                                      (eliminated || injured) && 'line-through',
-                                    )}
-                                  >
-                                    {player.name}
-                                  </span>
-                                  {player.jersey && (
-                                    <span className="shrink-0 font-mono text-[10px] text-text-muted">
-                                      #{player.jersey}
-                                    </span>
+                              {/* Row 1: Name + badges */}
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={cn(
+                                    'text-sm font-semibold text-text-primary',
+                                    (eliminated || injured) && 'line-through',
                                   )}
-                                  <span className="shrink-0 text-xs text-text-muted">
-                                    ({player.team.seed}) {player.team.shortName}
+                                >
+                                  {player.name}
+                                </span>
+                                {eliminated && (
+                                  <span className="shrink-0 rounded-full bg-neon-red/15 px-1.5 py-0.5 text-[10px] font-semibold text-neon-red">
+                                    OUT
                                   </span>
-                                  <span className="shrink-0 text-[10px] text-text-muted hidden sm:inline">
-                                    {player.team.region}
+                                )}
+                                {injured && (
+                                  <span className="shrink-0 rounded-full bg-neon-orange/15 px-1.5 py-0.5 text-[10px] font-semibold text-neon-orange">
+                                    INJ
                                   </span>
-                                  {eliminated && (
-                                    <span className="shrink-0 rounded-full bg-neon-red/15 px-1.5 py-0.5 text-[10px] font-semibold text-neon-red">
-                                      OUT
-                                    </span>
-                                  )}
-                                  {injured && (
-                                    <span className="shrink-0 rounded-full bg-neon-orange/15 px-1.5 py-0.5 text-[10px] font-semibold text-neon-orange">
-                                      INJ
-                                    </span>
-                                  )}
-                                </div>
+                                )}
                               </div>
 
-                              {/* Stats */}
-                              <div className="flex items-center gap-4 shrink-0 font-mono text-xs">
-                                <span className="w-8 text-right text-text-secondary">
-                                  {player.totalPts}
-                                </span>
-                                <span className="w-8 text-right text-text-secondary">
-                                  {player.totalReb}
-                                </span>
-                                <span className="w-8 text-right text-text-secondary">
-                                  {player.totalAst}
-                                </span>
-                                <span className="w-10 text-right font-bold text-neon-green">
-                                  {player.totalScore}
-                                </span>
+                              {/* Row 2: Team info + stats */}
+                              <div className="flex items-center justify-between mt-1">
+                                <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                                  <span>({player.team.seed}) {player.team.shortName}</span>
+                                  {player.jersey && (
+                                    <span className="font-mono">#{player.jersey}</span>
+                                  )}
+                                  <span className="hidden sm:inline">{player.team.region}</span>
+                                </div>
+                                <div className="flex items-center gap-3 font-mono text-xs">
+                                  <span className="text-text-secondary">{player.totalPts}</span>
+                                  <span className="text-text-secondary">{player.totalReb}</span>
+                                  <span className="text-text-secondary">{player.totalAst}</span>
+                                  <span className="font-bold text-neon-green">{player.totalScore}</span>
+                                </div>
                               </div>
                             </div>
                           );

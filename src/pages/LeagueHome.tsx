@@ -245,17 +245,17 @@ export default function LeagueHome() {
                   {todayGames.map((game) => (
                     <div
                       key={game.gameId}
-                      className="flex items-center justify-between rounded-lg border border-bg-border bg-bg-primary px-4 py-3"
+                      className="flex items-center rounded-lg border border-bg-border bg-bg-primary px-3 py-3 sm:px-4 overflow-hidden"
                     >
                       {/* Away team */}
-                      <div className="flex-1 text-right">
-                        <p className="text-sm font-semibold text-text-primary truncate">
+                      <div className="flex-1 min-w-0 text-right">
+                        <p className="text-xs sm:text-sm font-semibold text-text-primary truncate">
                           {game.awayTeam}
                         </p>
                       </div>
 
                       {/* Score / status */}
-                      <div className="mx-4 flex flex-col items-center min-w-[80px]">
+                      <div className="mx-2 sm:mx-4 flex flex-col items-center shrink-0">
                         {game.status === 'scheduled' ? (
                           <p className="text-xs text-text-muted">
                             {game.scheduledTime
@@ -267,7 +267,7 @@ export default function LeagueHome() {
                               : 'TBD'}
                           </p>
                         ) : (
-                          <p className="text-lg font-bold text-text-primary tabular-nums">
+                          <p className="text-base sm:text-lg font-bold text-text-primary tabular-nums">
                             {game.awayScore} - {game.homeScore}
                           </p>
                         )}
@@ -295,8 +295,8 @@ export default function LeagueHome() {
                       </div>
 
                       {/* Home team */}
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-text-primary truncate">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-semibold text-text-primary truncate">
                           {game.homeTeam}
                         </p>
                       </div>
