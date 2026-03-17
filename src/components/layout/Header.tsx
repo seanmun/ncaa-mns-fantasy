@@ -14,9 +14,9 @@ export default function Header() {
         <div className="flex items-center gap-3">
           <Link
             to="/dashboard"
-            className="font-display text-2xl text-neon-green tracking-wide hover:animate-glow transition-all focus-visible:outline-2 focus-visible:outline-neon-cyan focus-visible:outline-offset-2"
+            className="font-display text-2xl tracking-wide hover:animate-glow transition-all focus-visible:outline-2 focus-visible:outline-neon-cyan focus-visible:outline-offset-2"
           >
-            MNSfantasy
+            <span className="text-white">MNS</span><span className="text-neon-green">fantasy</span>
           </Link>
           <a
             href={getPlatformUrl()}

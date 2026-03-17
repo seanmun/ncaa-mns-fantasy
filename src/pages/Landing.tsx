@@ -5,10 +5,52 @@ import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
 import { getPlatformUrl } from '@/lib/utils';
 
 const tiers = [
-  { tier: 1, seeds: '1–4', picks: 4, color: 'var(--tier-1)', label: 'Tier 1' },
-  { tier: 2, seeds: '5–8', picks: 3, color: 'var(--tier-2)', label: 'Tier 2' },
-  { tier: 3, seeds: '9–12', picks: 2, color: 'var(--tier-3)', label: 'Tier 3' },
-  { tier: 4, seeds: '13–16', picks: 1, color: 'var(--tier-4)', label: 'Tier 4' },
+  {
+    tier: 1,
+    seeds: '1–4',
+    picks: 4,
+    color: 'var(--tier-1)',
+    label: 'Tier 1',
+    players: [
+      { name: 'Darius Acuff Jr.', jersey: '5', seed: 4, team: 'ARK', region: 'West' },
+      { name: 'Darryn Peterson', jersey: '22', seed: 4, team: 'KU', region: 'East' },
+      { name: 'Keaton Wagler', jersey: '23', seed: 3, team: 'ILL', region: 'South' },
+      { name: 'Cameron Boozer', jersey: '12', seed: 1, team: 'DUKE', region: 'East' },
+    ],
+  },
+  {
+    tier: 2,
+    seeds: '5–8',
+    picks: 3,
+    color: 'var(--tier-2)',
+    label: 'Tier 2',
+    players: [
+      { name: 'JT Toppin', jersey: '15', seed: 5, team: 'TTU', region: 'Midwest' },
+      { name: 'Zuby Ejiofor', jersey: '24', seed: 5, team: 'SJU', region: 'East' },
+      { name: 'AJ Dybantsa', jersey: '3', seed: 6, team: 'BYU', region: 'West' },
+    ],
+  },
+  {
+    tier: 3,
+    seeds: '9–12',
+    picks: 2,
+    color: 'var(--tier-3)',
+    label: 'Tier 3',
+    players: [
+      { name: 'Dailyn Swain', jersey: '3', seed: 11, team: 'TEX', region: 'TBD' },
+      { name: 'Robbie Avila', jersey: '21', seed: 9, team: 'SLU', region: 'Midwest' },
+    ],
+  },
+  {
+    tier: 4,
+    seeds: '13–16',
+    picks: 1,
+    color: 'var(--tier-4)',
+    label: 'Tier 4',
+    players: [
+      { name: 'Dominique Daniels Jr.', jersey: '1', seed: 13, team: 'CBU', region: 'East' },
+    ],
+  },
 ];
 
 const steps = [
@@ -211,26 +253,44 @@ export default function Landing() {
           viewport={{ once: true, amount: 0.2 }}
           className="grid grid-cols-2 sm:grid-cols-4 gap-3"
         >
-          {tiers.map(({ tier, seeds, picks, color, label }) => (
+          {tiers.map(({ tier, seeds, picks, color, label, players }) => (
             <motion.div
               key={tier}
               variants={staggerItem}
-              className="rounded-xl border border-bg-border bg-bg-card p-4 text-center"
+              className="rounded-xl border border-bg-border bg-bg-card overflow-hidden"
             >
+              {/* Header */}
               <div
-                className="mx-auto mb-2 h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold"
-                style={{ backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`, color }}
+                className="flex items-center justify-between px-3 py-2"
+                style={{ backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)` }}
               >
-                T{tier}
+                <div>
+                  <p className="font-display text-xs text-text-primary leading-tight">{label}</p>
+                  <p className="text-[10px] text-text-muted leading-tight">Seeds {seeds}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-display text-2xl font-bold leading-none" style={{ color }}>{picks}</p>
+                  <p className="text-[9px] text-text-muted">player{picks > 1 ? 's' : ''}</p>
+                </div>
               </div>
-              <p className="font-display text-sm text-text-primary">{label}</p>
-              <p className="text-xs text-text-muted mt-1">Seeds {seeds}</p>
-              <p className="mt-2 text-2xl font-bold" style={{ color }}>
-                {picks}
-              </p>
-              <p className="text-xs text-text-muted">
-                {picks === 1 ? 'player' : 'players'}
-              </p>
+
+              {/* Example roster players */}
+              <div className="px-2.5 py-2 space-y-0.5">
+                {players.map((p) => (
+                  <div
+                    key={p.name}
+                    className="rounded px-1.5 py-1 text-left"
+                    style={{ backgroundColor: `color-mix(in srgb, ${color} 6%, transparent)` }}
+                  >
+                    <p className="text-[11px] font-semibold text-text-primary leading-tight">
+                      {p.name}
+                    </p>
+                    <p className="text-[9px] text-text-muted leading-tight">
+                      ({p.seed}) {p.team} &middot; {p.region}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </motion.div>
           ))}
         </motion.div>
@@ -243,7 +303,7 @@ export default function Landing() {
           transition={{ duration: 0.5, delay: 0.4 }}
           className="mt-6 text-center text-sm text-text-muted"
         >
-          Higher seeds are safer — lower seeds are wildcards. Build the best mix and ride it through the bracket.
+          Higher seeds are safer — lower seeds are wildcards. Go all in on one team or diversify across the bracket. Build the best mix and ride it through the madness.
         </motion.p>
       </section>
 
@@ -350,9 +410,6 @@ export default function Landing() {
           >
             Start Playing
           </Link>
-          <p className="mt-4 text-sm italic text-text-muted">
-            Underdogs Welcome.
-          </p>
         </motion.div>
       </section>
     </div>
