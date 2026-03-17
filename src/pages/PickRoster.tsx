@@ -452,7 +452,7 @@ export default function PickRoster() {
 
         {/* Bottom sticky bar */}
         <div
-          className="fixed inset-x-0 md:bottom-0 z-40 border-t border-bg-border bg-bg-secondary/95 backdrop-blur-sm"
+          className="fixed inset-x-0 md:bottom-0 z-40 border-t border-bg-border bg-bg-secondary backdrop-blur-md"
           style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}
         >
           <div className="mx-auto max-w-5xl px-4 py-2">

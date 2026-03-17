@@ -69,11 +69,6 @@ export default function PlayerListView({
             <span className="text-sm font-semibold text-text-primary truncate">
               {player.name}
             </span>
-            {player.jersey && (
-              <span className="shrink-0 font-mono text-[10px] text-text-muted">
-                #{player.jersey}
-              </span>
-            )}
             {!isTeamMode && (
               <span className="shrink-0 text-xs text-text-muted">
                 {player.team.shortName}

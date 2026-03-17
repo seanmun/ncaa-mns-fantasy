@@ -22,7 +22,7 @@ export default function TierNavigationTabs({
   onMobileViewChange,
 }: TierNavigationTabsProps) {
   return (
-    <div className="sticky top-[96px] z-40 border-b border-bg-border bg-bg-secondary/95 backdrop-blur-sm">
+    <div className="sticky top-[96px] z-40 border-b border-bg-border bg-bg-secondary backdrop-blur-md">
       <div className="mx-auto max-w-5xl px-4">
         <div className="flex items-center gap-1">
           {SEED_TIERS.map((tierConfig) => {

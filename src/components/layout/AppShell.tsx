@@ -11,7 +11,7 @@ function RosterBanner() {
 
   if (isLocked) {
     return (
-      <div className="fixed top-16 left-0 right-0 z-40 flex items-center justify-center gap-2 bg-bg-secondary/80 backdrop-blur-sm border-b border-bg-border py-1.5">
+      <div className="fixed top-16 left-0 right-0 z-40 flex items-center justify-center gap-2 bg-bg-secondary backdrop-blur-md border-b border-bg-border py-1.5">
         <Lock className="h-3 w-3 text-text-muted" />
         <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
           Rosters Locked
@@ -29,12 +29,12 @@ function RosterBanner() {
   return (
     <div
       className={cn(
-        'fixed top-16 left-0 right-0 z-40 flex items-center justify-center gap-2 border-b py-1.5 backdrop-blur-sm',
+        'fixed top-16 left-0 right-0 z-40 flex items-center justify-center gap-2 border-b py-1.5 backdrop-blur-md',
         isCritical
           ? 'bg-neon-red/5 border-neon-red/20'
           : isUrgent
             ? 'bg-neon-orange/5 border-neon-orange/20'
-            : 'bg-bg-secondary/80 border-bg-border',
+            : 'bg-bg-secondary border-bg-border',
       )}
     >
       <Clock className={cn('h-3 w-3', timeColor)} />
