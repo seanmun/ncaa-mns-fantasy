@@ -207,39 +207,54 @@ export default function JoinLeague() {
               )}
             </div>
 
-            {/* Card: Team name input + join */}
+            {/* Card: Sign in prompt OR team name + join */}
             <div className="rounded-xl border border-bg-border bg-bg-card p-6 space-y-4">
-              <label
-                htmlFor="teamName"
-                className="block text-sm font-semibold text-text-primary"
-              >
-                Your Team Name
-              </label>
-              <input
-                id="teamName"
-                type="text"
-                placeholder="Bracket Busters"
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-                maxLength={30}
-                className="w-full rounded-lg border border-bg-border bg-bg-primary px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-neon-green focus:outline-none focus:ring-1 focus:ring-neon-green transition-colors"
-              />
-
-              <Button
-                type="button"
-                variant="primary"
-                size="lg"
-                loading={joinMutation.isPending}
-                onClick={handleJoin}
-                className="w-full"
-              >
-                {isSignedIn ? 'Join League' : 'Sign in to Join'}
-              </Button>
-
-              {!isSignedIn && (
-                <p className="text-center text-xs text-text-muted">
-                  You'll be redirected to sign in, then brought back here.
-                </p>
+              {isSignedIn ? (
+                <>
+                  <label
+                    htmlFor="teamName"
+                    className="block text-sm font-semibold text-text-primary"
+                  >
+                    Your Team Name
+                  </label>
+                  <input
+                    id="teamName"
+                    type="text"
+                    placeholder="Bracket Busters"
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    maxLength={30}
+                    className="w-full rounded-lg border border-bg-border bg-bg-primary px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-neon-green focus:outline-none focus:ring-1 focus:ring-neon-green transition-colors"
+                  />
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="lg"
+                    loading={joinMutation.isPending}
+                    onClick={handleJoin}
+                    className="w-full"
+                  >
+                    Join League
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-text-secondary">
+                    Sign in or create an account to join this league.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="lg"
+                    onClick={handleJoin}
+                    className="w-full"
+                  >
+                    Sign in to Join
+                  </Button>
+                  <p className="text-center text-xs text-text-muted">
+                    You'll be redirected to sign in, then brought back here.
+                  </p>
+                </>
               )}
             </div>
           </div>

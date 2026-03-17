@@ -111,17 +111,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Delete existing roster for this member, then insert new picks
-    await db
-      .delete(rosters)
-      .where(eq(rosters.memberId, membership.id));
-
+    // Delete existing roster for this member, then insert new picks (atomic)
     const rosterInserts = playerIds.map((playerId: string) => ({
       memberId: membership.id,
       playerId,
     }));
 
-    await db.insert(rosters).values(rosterInserts);
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(rosters)
+        .where(eq(rosters.memberId, membership.id));
+      await tx.insert(rosters).values(rosterInserts);
+    });
 
     return res.status(201).json({ data: { success: true, playerCount: 10 } });
   } catch (err) {
