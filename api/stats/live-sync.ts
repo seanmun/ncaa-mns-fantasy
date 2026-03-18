@@ -3,7 +3,7 @@ import { eq, and } from 'drizzle-orm';
 import { verifyAuth, isAdmin } from '../_middleware.js';
 import { db, schema } from '../_db.js';
 
-const { players, playerTournamentStats, activeGames } = schema;
+const { players, playerTournamentStats, activeGames, ncaaTeams } = schema;
 
 // In-memory rate limiter (per cold start)
 let lastSyncTime: Date | null = null;
@@ -147,10 +147,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Poll games that have already started (scheduled time in the past)
-    const liveGames = allGames.filter(
-      (g: { scheduled?: string }) => g.scheduled && new Date(g.scheduled) <= now
+    // Get our tournament team names to filter which games get expensive summary calls
+    const ourTeamRows = await db
+      .select({ name: ncaaTeams.name, shortName: ncaaTeams.shortName })
+      .from(ncaaTeams);
+    const ourTeamNames = new Set(
+      ourTeamRows.flatMap((t) => [t.name.toLowerCase(), t.shortName.toLowerCase()])
     );
+
+    // Only poll games that: (1) already started AND (2) involve a tournament team
+    const liveGames = allGames.filter((g: { scheduled?: string; home?: { name?: string }; away?: { name?: string } }) => {
+      if (!g.scheduled || new Date(g.scheduled) > now) return false;
+      const homeName = (g.home?.name || '').toLowerCase();
+      const awayName = (g.away?.name || '').toLowerCase();
+      // Check if any of our team names appear in the SR team name
+      return [...ourTeamNames].some((tn) => homeName.includes(tn) || awayName.includes(tn));
+    });
 
     let statsUpserted = 0;
     let totalSrPlayers = 0;
