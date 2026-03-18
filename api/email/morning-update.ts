@@ -360,7 +360,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         emailHtml = emailHtml.replace(/\{\{TIMESTAMP\}\}/g, '');
 
         await resend.emails.send({
-          from: 'MNSfantasy <updates@mnsfantasy.com>',
+          from: 'MNSfantasy <updates@e.mnsfantasy.com>',
           to: member.email,
           subject: `\u2600\uFE0F MNSfantasy Results \u2014 ${league.name} | ${dateLabel}`,
           html: emailHtml,
