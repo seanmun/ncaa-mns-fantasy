@@ -51,7 +51,7 @@ export default function JoinLeague() {
       const res = await fetch(`/api/leagues/join/${inviteCode}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({ message: 'Request failed' }));
-        throw new Error(err.message || `API error: ${res.status}`);
+        throw new Error(err.error || err.message || `API error: ${res.status}`);
       }
       const json = await res.json();
       return json.data !== undefined ? json.data : json;
