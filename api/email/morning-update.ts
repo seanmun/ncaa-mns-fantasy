@@ -327,8 +327,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           replacements[`t${tier}_total`] = String(tierTotal);
         }
 
-        // Scoreboard (top 5 from standings)
-        for (let i = 0; i < 5; i++) {
+        // Scoreboard (top 10 from standings)
+        for (let i = 0; i < 10; i++) {
           const prefix = `sb_r${i + 1}`;
           const s = standings[i];
 
@@ -362,7 +362,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await resend.emails.send({
           from: 'MNSfantasy <updates@e.mnsfantasy.com>',
           to: member.email,
-          subject: `\u2600\uFE0F MNSfantasy Results \u2014 ${league.name} | ${dateLabel}`,
+          subject: `\uD83C\uDFC0 MNSfantasy Results \u2014 ${league.name} | ${dateLabel}`,
           html: emailHtml,
         });
 

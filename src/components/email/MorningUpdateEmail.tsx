@@ -69,7 +69,7 @@ export default function MorningUpdateEmail({
     <Html lang="en" dir="ltr">
       <Head />
       <Preview>
-        MNSfantasy Update -- {leagueName} | {date}
+        {'\uD83C\uDFC0'} MNSfantasy Results &mdash; {leagueName} | {date}
       </Preview>
       <Body style={main}>
         <Container style={container}>
