@@ -140,8 +140,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Poll ALL games — trial API may not update status field reliably
-    const liveGames = allGames;
+    // Poll games that have already started (scheduled time in the past)
+    const now = new Date();
+    const liveGames = allGames.filter(
+      (g: { scheduled?: string }) => g.scheduled && new Date(g.scheduled) <= now
+    );
 
     let statsUpserted = 0;
 
