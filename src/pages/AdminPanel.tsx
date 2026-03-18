@@ -273,8 +273,12 @@ export default function AdminPanel() {
   const emailTestMutation = useMutation({
     mutationFn: () =>
       apiFetch('/api/email/morning-update?test=true', { method: 'POST' }),
-    onSuccess: () => {
-      toast.success('Test email sent to your inbox');
+    onSuccess: (data: { emailsSent: number; debug?: Record<string, unknown> }) => {
+      if (data.emailsSent > 0) {
+        toast.success(`Test email sent (${data.emailsSent})`);
+      } else {
+        toast.error(`0 emails sent. Debug: ${JSON.stringify(data.debug)}`);
+      }
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to send test email');
