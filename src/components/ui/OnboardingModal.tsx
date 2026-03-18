@@ -8,9 +8,20 @@ export default function OnboardingModal() {
   const { user } = useUser();
   const { apiFetch } = useApi();
   const [show, setShow] = useState(false);
-  const [globalOptIn, setGlobalOptIn] = useState(true);
-  const [mnsInsights, setMnsInsights] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Global prefs — all prechecked
+  const [globalOptIn, setGlobalOptIn] = useState(true);
+  const [prefNewGames, setPrefNewGames] = useState(true);
+  const [prefLeagueInvites, setPrefLeagueInvites] = useState(true);
+  const [prefPlatformNews, setPrefPlatformNews] = useState(true);
+  const [prefMnsInsights, setPrefMnsInsights] = useState(true);
+
+  // Game-specific prefs — all prechecked
+  const [prefMorningUpdates, setPrefMorningUpdates] = useState(true);
+  const [prefEliminationAlerts, setPrefEliminationAlerts] = useState(true);
+  const [prefScoreAlerts, setPrefScoreAlerts] = useState(true);
+  const [prefRosterReminders, setPrefRosterReminders] = useState(true);
 
   useEffect(() => {
     if (!user) return;
@@ -36,14 +47,30 @@ export default function OnboardingModal() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
+      // Save global platform prefs
       await apiFetch('/api/marketing/subscribe', {
         method: 'POST',
         body: JSON.stringify({
           globalOptIn,
-          mnsInsights,
+          mnsInsights: prefMnsInsights,
+          prefNewGames,
+          prefLeagueInvites,
+          prefPlatformNews,
           source: getGameSlug(),
         }),
       });
+
+      // Save game-specific prefs
+      await apiFetch('/api/marketing/game-prefs', {
+        method: 'PUT',
+        body: JSON.stringify({
+          prefMorningUpdates,
+          prefEliminationAlerts,
+          prefScoreAlerts,
+          prefRosterReminders,
+        }),
+      });
+
       localStorage.setItem('mns_onboarding_complete', 'true');
       setShow(false);
     } catch {
@@ -68,7 +95,7 @@ export default function OnboardingModal() {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-md rounded-xl bg-bg-card border border-bg-border p-8"
+            className="w-full max-w-md rounded-xl bg-bg-card border border-bg-border p-8 max-h-[90vh] overflow-y-auto"
           >
             <h2 className="font-display text-3xl text-text-primary mb-2">
               Before you play...
@@ -77,31 +104,39 @@ export default function OnboardingModal() {
               MNSfantasy is free. We keep you in the game with email updates.
             </p>
 
-            <div className="space-y-4 mb-8">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={globalOptIn}
-                  onChange={(e) => setGlobalOptIn(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-bg-border bg-bg-secondary accent-neon-green"
-                />
-                <span className="text-sm text-text-primary">
-                  Yes, keep me posted on new MNSfantasy games, league activity,
-                  and platform updates.
-                </span>
-              </label>
+            {/* Master opt-in */}
+            <label className="flex items-start gap-3 cursor-pointer mb-6">
+              <input
+                type="checkbox"
+                checked={globalOptIn}
+                onChange={(e) => setGlobalOptIn(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-bg-border bg-bg-secondary accent-neon-green"
+              />
+              <span className="text-sm font-semibold text-text-primary">
+                Yes, send me email updates from MNSfantasy
+              </span>
+            </label>
 
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={mnsInsights}
-                  onChange={(e) => setMnsInsights(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-bg-border bg-bg-secondary accent-neon-green"
-                />
-                <span className="text-sm text-text-secondary">
-                  Also send me fantasy insights from MoneyNeverSleeps.app
-                </span>
-              </label>
+            {/* Game Updates */}
+            <p className="text-xs font-semibold text-neon-green uppercase tracking-widest mb-3">
+              Game Updates
+            </p>
+            <div className="space-y-3 mb-6">
+              <Checkbox checked={prefMorningUpdates} onChange={setPrefMorningUpdates} label="Morning recap emails" />
+              <Checkbox checked={prefScoreAlerts} onChange={setPrefScoreAlerts} label="Live score alerts" />
+              <Checkbox checked={prefEliminationAlerts} onChange={setPrefEliminationAlerts} label="Team elimination alerts" />
+              <Checkbox checked={prefRosterReminders} onChange={setPrefRosterReminders} label="Roster lock reminders" />
+            </div>
+
+            {/* Platform */}
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">
+              Platform
+            </p>
+            <div className="space-y-3 mb-8">
+              <Checkbox checked={prefNewGames} onChange={setPrefNewGames} label="New game announcements" />
+              <Checkbox checked={prefLeagueInvites} onChange={setPrefLeagueInvites} label="League invite notifications" />
+              <Checkbox checked={prefPlatformNews} onChange={setPrefPlatformNews} label="Platform news & updates" />
+              <Checkbox checked={prefMnsInsights} onChange={setPrefMnsInsights} label="Fantasy insights from MoneyNeverSleeps.app" />
             </div>
 
             <button
@@ -109,7 +144,7 @@ export default function OnboardingModal() {
               disabled={submitting}
               className="w-full py-3 px-6 rounded-lg bg-neon-green text-bg-primary font-semibold hover:brightness-110 transition-all disabled:opacity-50"
             >
-              {submitting ? 'Setting up...' : "Let's Play"}
+              {submitting ? 'Setting up...' : "Confirm & Play"}
             </button>
 
             <p className="text-xs text-text-muted mt-4 text-center">
@@ -128,5 +163,27 @@ export default function OnboardingModal() {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function Checkbox({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) {
+  return (
+    <label className="flex items-start gap-3 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 h-4 w-4 rounded border-bg-border bg-bg-secondary accent-neon-green"
+      />
+      <span className="text-sm text-text-secondary">{label}</span>
+    </label>
   );
 }

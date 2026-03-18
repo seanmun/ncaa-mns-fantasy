@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: parsed.error });
   }
 
-  const { globalOptIn, mnsInsights, source } = parsed.data;
+  const { globalOptIn, mnsInsights, prefNewGames, prefLeagueInvites, prefPlatformNews, source } = parsed.data;
 
   // Get user email from users table
   const userRecord = await db
@@ -47,6 +47,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       email: userRecord[0].email,
       globalOptIn: globalOptIn ?? false,
       prefMnsInsights: mnsInsights ?? false,
+      prefNewGames: prefNewGames ?? true,
+      prefLeagueInvites: prefLeagueInvites ?? true,
+      prefPlatformNews: prefPlatformNews ?? true,
       source: source || 'ncaa-mens-2025',
       optedInAt: globalOptIn ? new Date() : null,
     })
@@ -55,6 +58,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       set: {
         globalOptIn: globalOptIn ?? false,
         prefMnsInsights: mnsInsights ?? false,
+        prefNewGames: prefNewGames ?? true,
+        prefLeagueInvites: prefLeagueInvites ?? true,
+        prefPlatformNews: prefPlatformNews ?? true,
         updatedAt: new Date(),
       },
     });

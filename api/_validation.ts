@@ -137,6 +137,9 @@ export const gamePrefsSchema = z.object({
 export const marketingSubscribeSchema = z.object({
   globalOptIn: z.boolean().optional(),
   mnsInsights: z.boolean().optional(),
+  prefNewGames: z.boolean().optional(),
+  prefLeagueInvites: z.boolean().optional(),
+  prefPlatformNews: z.boolean().optional(),
   source: z.string().optional(),
 });
 
