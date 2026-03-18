@@ -23,12 +23,6 @@ const resend = new Resend(process.env.RESEND_API_KEY!);
 const GAME_SLUG = process.env.GAME_SLUG || 'ncaa-mens-2025';
 const BASE_URL = process.env.VITE_APP_URL || 'https://ncaa.mnsfantasy.com';
 
-// Read HTML template once per cold start
-const templateHtml = readFileSync(
-  join(process.cwd(), 'email-templates', 'results.html'),
-  'utf-8'
-);
-
 // ---------------------------------------------------------------------------
 // Email guard (inlined for serverless — mirrors src/lib/email-guard.ts)
 // ---------------------------------------------------------------------------
@@ -124,6 +118,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const testMode = req.query.test === 'true';
 
   try {
+    // Read HTML template (inside handler so errors are caught)
+    let templateHtml: string;
+    const templatePath = join(process.cwd(), 'email-templates', 'results.html');
+    try {
+      templateHtml = readFileSync(templatePath, 'utf-8');
+    } catch (fsErr: any) {
+      console.error('Failed to read template:', fsErr.message, 'path:', templatePath, 'cwd:', process.cwd());
+      return res.status(500).json({
+        error: 'Template file not found',
+        debug: { path: templatePath, cwd: process.cwd(), fsError: fsErr.message },
+      });
+    }
+
     const now = new Date();
     const todayStart = new Date(
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
@@ -373,9 +380,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({
       success: true,
       emailsSent: totalSent,
+      debug: { authUserId, testMode, leaguesFound: allLeagues.length },
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Morning update email error:', err);
-    return res.status(500).json({ error: 'Failed to send morning update emails' });
+    return res.status(500).json({ error: 'Failed to send morning update emails', debug: err.message });
   }
 }
