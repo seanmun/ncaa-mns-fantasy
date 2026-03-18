@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { eq, and, isNotNull } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { verifyAuth, isAdmin } from '../_middleware.js';
 import { db, schema } from '../_db.js';
 
-const { players, playerTournamentStats, activeGames, ncaaTeams } = schema;
+const { players, playerTournamentStats, activeGames } = schema;
 
 // In-memory rate limiter (per cold start)
 let lastSyncTime: Date | null = null;
@@ -140,20 +140,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Get all SR team IDs from our ncaa_teams table to filter relevant games
-    const ourTeams = await db
-      .select({ srTeamId: ncaaTeams.sportRadarTeamId })
-      .from(ncaaTeams)
-      .where(isNotNull(ncaaTeams.sportRadarTeamId));
-    const ourTeamIds = new Set(ourTeams.map((t) => t.srTeamId));
-
-    // Only poll games that: (1) have already started AND (2) involve one of our teams
-    const liveGames = allGames.filter((g: { scheduled?: string; home?: { id?: string }; away?: { id?: string } }) => {
-      if (!g.scheduled || new Date(g.scheduled) > now) return false;
-      const homeId = g.home?.id;
-      const awayId = g.away?.id;
-      return (homeId && ourTeamIds.has(homeId)) || (awayId && ourTeamIds.has(awayId));
-    });
+    // Poll games that have already started (scheduled time in the past)
+    const liveGames = allGames.filter(
+      (g: { scheduled?: string }) => g.scheduled && new Date(g.scheduled) <= now
+    );
 
     let statsUpserted = 0;
     let totalSrPlayers = 0;
@@ -288,7 +278,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           totalSrPlayers,
           matchedPlayers,
           failedSummaries,
-          ourTeamCount: ourTeamIds.size,
           games: debugGames,
         },
       },
