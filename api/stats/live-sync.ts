@@ -66,11 +66,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'SportsRadar API not configured' });
     }
 
-    // Fetch today's schedule
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
+    // Fetch today's schedule (use Eastern time for date, since games are US-based)
+    const etDateStr = now.toLocaleDateString('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    // etDateStr is "MM/DD/YYYY"
+    const [mm, dd, yyyy] = etDateStr.split('/');
+    const year = yyyy;
+    const month = mm;
+    const day = dd;
 
     const scheduleRes = await fetch(
       `${BASE_URL}/games/${year}/${month}/${day}/schedule.json?api_key=${API_KEY}`
@@ -170,7 +177,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const summary = await summaryRes.json();
       const round = game.title || game.round || 'first_four';
-      const gameDate = new Date(game.scheduled || today);
+      const gameDate = new Date(game.scheduled || now);
 
       // Update activeGames with detailed scores from summary
       const homePoints = summary.home?.points ?? 0;
