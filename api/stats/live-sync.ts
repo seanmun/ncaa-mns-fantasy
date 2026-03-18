@@ -140,17 +140,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Log all game statuses for debugging
-    const gameStatuses = allGames.map((g: { status?: string; home?: { name?: string }; away?: { name?: string } }) => ({
-      game: `${g.away?.name || '?'} @ ${g.home?.name || '?'}`,
-      status: g.status,
-    }));
-    console.log('Game statuses:', JSON.stringify(gameStatuses));
-
-    // Filter to games worth polling for player stats
-    const liveGames = allGames.filter(
-      (g: { status?: string }) => g.status === 'inprogress' || g.status === 'halftime' || g.status === 'closed' || g.status === 'complete'
-    );
+    // Poll ALL games — trial API may not update status field reliably
+    const liveGames = allGames;
 
     let statsUpserted = 0;
 
