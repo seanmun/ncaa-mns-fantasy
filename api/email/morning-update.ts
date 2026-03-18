@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { render } from '@react-email/components';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { Resend } from 'resend';
-import { eq, and, desc, gte, lt, sql } from 'drizzle-orm';
+import { eq, and, gte, sql } from 'drizzle-orm';
 import { verifyAuth, isAdmin } from '../_middleware.js';
 import { db, schema } from '../_db.js';
-import MorningUpdateEmail from '../../src/components/email/MorningUpdateEmail.js';
 
 const {
   leagues,
@@ -22,6 +22,12 @@ const {
 const resend = new Resend(process.env.RESEND_API_KEY!);
 const GAME_SLUG = process.env.GAME_SLUG || 'ncaa-mens-2025';
 const BASE_URL = process.env.VITE_APP_URL || 'https://ncaa.mnsfantasy.com';
+
+// Read HTML template once per cold start
+const templateHtml = readFileSync(
+  join(process.cwd(), 'email-templates', 'results.html'),
+  'utf-8'
+);
 
 // ---------------------------------------------------------------------------
 // Email guard (inlined for serverless — mirrors src/lib/email-guard.ts)
@@ -76,6 +82,26 @@ async function canSendEmail(
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function seedToTier(seed: number): number {
+  if (seed >= 1 && seed <= 4) return 1;
+  if (seed >= 5 && seed <= 8) return 2;
+  if (seed >= 9 && seed <= 12) return 3;
+  return 4;
+}
+
+const TIER_PICK_COUNT: Record<number, number> = { 1: 4, 2: 3, 3: 2, 4: 1 };
+
+interface PlayerData {
+  playerName: string;
+  teamName: string;
+  seed: number;
+  isEliminated: boolean;
+  totalScore: number;
+}
+
+// ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -83,10 +109,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Auth: must be admin or cron (Vercel cron sends CRON_SECRET header)
+  // Auth: must be admin or cron
   const cronSecret = req.headers['authorization'];
-  const isCron =
-    cronSecret === `Bearer ${process.env.CRON_SECRET}`;
+  const isCron = cronSecret === `Bearer ${process.env.CRON_SECRET}`;
 
   let authUserId: string | null = null;
   if (!isCron) {
@@ -99,12 +124,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const testMode = req.query.test === 'true';
 
   try {
-    // Date boundaries: yesterday 00:00 UTC .. today 00:00 UTC
     const now = new Date();
     const todayStart = new Date(
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
     );
-    const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
     const dateLabel = todayStart.toLocaleDateString('en-US', {
       weekday: 'long',
       month: 'long',
@@ -139,123 +162,95 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (members.length === 0) continue;
 
       // ------------------------------------------------------------------
-      // 2. Compute standings (total pts + reb + ast per member)
+      // 2. Build roster + stats data for each member
       // ------------------------------------------------------------------
-      const standingsData: Array<{
-        rank: number;
+      const memberData: Array<{
+        memberId: string;
+        userId: string;
         teamName: string;
+        email: string;
+        players: PlayerData[];
         totalScore: number;
+        remaining: number;
       }> = [];
 
       for (const member of members) {
         const rosterRows = await db
-          .select({ playerId: rosters.playerId })
+          .select({
+            playerId: rosters.playerId,
+            playerName: players.name,
+            teamName: ncaaTeams.name,
+            seed: ncaaTeams.seed,
+            isEliminated: ncaaTeams.isEliminated,
+          })
           .from(rosters)
+          .innerJoin(players, eq(players.id, rosters.playerId))
+          .innerJoin(ncaaTeams, eq(ncaaTeams.id, players.teamId))
           .where(eq(rosters.memberId, member.memberId));
 
-        let totalScore = 0;
+        const playerDataList: PlayerData[] = [];
+        let memberTotalScore = 0;
+        let remainingCount = 0;
+
         for (const r of rosterRows) {
           const stats = await db
             .select({
-              pts: sql<number>`COALESCE(SUM(${playerTournamentStats.pts}), 0)`,
-              reb: sql<number>`COALESCE(SUM(${playerTournamentStats.reb}), 0)`,
-              ast: sql<number>`COALESCE(SUM(${playerTournamentStats.ast}), 0)`,
+              totalPts: sql<number>`COALESCE(SUM(${playerTournamentStats.pts}), 0)`,
+              totalReb: sql<number>`COALESCE(SUM(${playerTournamentStats.reb}), 0)`,
+              totalAst: sql<number>`COALESCE(SUM(${playerTournamentStats.ast}), 0)`,
             })
             .from(playerTournamentStats)
             .where(eq(playerTournamentStats.playerId, r.playerId));
 
           const s = stats[0];
-          if (s) totalScore += Number(s.pts) + Number(s.reb) + Number(s.ast);
+          const totalScore = s
+            ? Number(s.totalPts) + Number(s.totalReb) + Number(s.totalAst)
+            : 0;
+
+          playerDataList.push({
+            playerName: r.playerName,
+            teamName: r.teamName,
+            seed: r.seed,
+            isEliminated: r.isEliminated,
+            totalScore,
+          });
+
+          memberTotalScore += totalScore;
+          if (!r.isEliminated) remainingCount++;
         }
 
-        standingsData.push({
-          rank: 0,
+        memberData.push({
+          memberId: member.memberId,
+          userId: member.userId,
           teamName: member.teamName,
-          totalScore,
+          email: member.email,
+          players: playerDataList,
+          totalScore: memberTotalScore,
+          remaining: remainingCount,
         });
       }
 
-      // Sort descending by score and assign ranks
-      standingsData.sort((a, b) => b.totalScore - a.totalScore);
-      standingsData.forEach((entry, idx) => {
-        entry.rank = idx + 1;
-      });
-
       // ------------------------------------------------------------------
-      // 3. Yesterday's top performers (all players in tournament)
+      // 3. Compute standings (sorted by totalScore desc)
       // ------------------------------------------------------------------
-      const yesterdayStats = await db
-        .select({
-          playerName: players.name,
-          teamName: ncaaTeams.name,
-          pts: playerTournamentStats.pts,
-          reb: playerTournamentStats.reb,
-          ast: playerTournamentStats.ast,
-        })
-        .from(playerTournamentStats)
-        .innerJoin(players, eq(players.id, playerTournamentStats.playerId))
-        .innerJoin(ncaaTeams, eq(ncaaTeams.id, players.teamId))
-        .where(
-          and(
-            gte(playerTournamentStats.gameDate, yesterdayStart),
-            lt(playerTournamentStats.gameDate, todayStart)
-          )
-        );
-
-      const topPerformers = yesterdayStats
-        .map((s) => ({
-          playerName: s.playerName,
-          teamName: s.teamName,
-          pts: s.pts,
-          reb: s.reb,
-          ast: s.ast,
-          total: s.pts + s.reb + s.ast,
-        }))
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 5);
-
-      // ------------------------------------------------------------------
-      // 4. Eliminations yesterday (teams eliminated since yesterday)
-      // ------------------------------------------------------------------
-      const eliminations = await db
-        .select({
-          teamName: ncaaTeams.name,
-          round: ncaaTeams.eliminatedInRound,
-        })
-        .from(ncaaTeams)
-        .where(eq(ncaaTeams.isEliminated, true));
-
-      // Note: We include all eliminated teams. A more precise filter would
-      // require an eliminatedAt timestamp column. For now this serves as a
-      // full elimination list; the email template handles empty arrays.
-      const eliminationRows = eliminations
-        .filter((e) => e.round !== null)
-        .map((e) => ({
-          teamName: e.teamName,
-          round: e.round!,
+      const standings = [...memberData]
+        .sort((a, b) => b.totalScore - a.totalScore)
+        .map((entry, idx) => ({
+          ...entry,
+          rank: idx + 1,
         }));
 
       // ------------------------------------------------------------------
-      // 5. Today's games — placeholder: in production, pull from a
-      //    tournament_games table or SportsRadar API. For now, empty.
-      // ------------------------------------------------------------------
-      const todayGames: Array<{
-        homeTeam: string;
-        awayTeam: string;
-        time: string;
-      }> = [];
-
-      // ------------------------------------------------------------------
-      // 6. Send to each member
+      // 4. Send to each member
       // ------------------------------------------------------------------
       const leagueUrl = `${BASE_URL}/leagues/${league.id}`;
 
-      for (const member of members) {
+      for (const member of memberData) {
         // Test mode: only send to the admin who triggered it
         if (testMode && member.userId !== authUserId) continue;
 
         if (!testMode) {
-          // Deduplication: check if we already sent today's morning update
+          // Deduplication check
           const [alreadySent] = await db
             .select({ id: emailLog.id })
             .from(emailLog)
@@ -279,32 +274,88 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (!allowed) continue;
         }
 
-        // Collect names of players on this member's roster (for highlight)
-        const memberRoster = await db
-          .select({ playerName: players.name })
-          .from(rosters)
-          .innerJoin(players, eq(players.id, rosters.playerId))
-          .where(eq(rosters.memberId, member.memberId));
+        // Group players by tier, sorted by score desc within each tier
+        const tiers: Record<number, PlayerData[]> = { 1: [], 2: [], 3: [], 4: [] };
+        for (const p of member.players) {
+          tiers[seedToTier(p.seed)].push(p);
+        }
+        for (const t of [1, 2, 3, 4]) {
+          tiers[t].sort((a, b) => b.totalScore - a.totalScore);
+        }
 
-        const recipientPlayerNames = memberRoster.map((r) => r.playerName);
+        // Build template replacements
+        const replacements: Record<string, string> = {
+          league_name: league.name,
+          team_name: member.teamName,
+          team_total_points: String(member.totalScore),
+          dashboard_url: leagueUrl,
+          unsubscribe_url: `${BASE_URL}/preferences?unsubscribe=all`,
+          mailing_address: 'MNS Fantasy',
+          current_year: String(now.getFullYear()),
+        };
 
-        const emailHtml = await render(
-          MorningUpdateEmail({
-            leagueName: league.name,
-            date: dateLabel,
-            standings: standingsData,
-            topPerformers,
-            eliminations: eliminationRows,
-            todayGames,
-            recipientPlayerNames,
-            leagueUrl,
-          })
-        );
+        // Tier player data
+        for (const tier of [1, 2, 3, 4]) {
+          const maxPicks = TIER_PICK_COUNT[tier];
+          let tierTotal = 0;
+
+          for (let i = 0; i < maxPicks; i++) {
+            const p = tiers[tier][i];
+            const prefix = `t${tier}_p${i + 1}`;
+
+            if (p) {
+              replacements[`${prefix}_name`] = p.playerName;
+              replacements[`${prefix}_team`] = p.teamName;
+              replacements[`${prefix}_seed`] = String(p.seed);
+              replacements[`${prefix}_pts`] = String(p.totalScore);
+              tierTotal += p.totalScore;
+            } else {
+              replacements[`${prefix}_name`] = '\u2014';
+              replacements[`${prefix}_team`] = '\u2014';
+              replacements[`${prefix}_seed`] = '\u2014';
+              replacements[`${prefix}_pts`] = '0';
+            }
+          }
+
+          replacements[`t${tier}_total`] = String(tierTotal);
+        }
+
+        // Scoreboard (top 5 from standings)
+        for (let i = 0; i < 5; i++) {
+          const prefix = `sb_r${i + 1}`;
+          const s = standings[i];
+
+          if (s) {
+            replacements[`${prefix}_rank`] = String(s.rank);
+            replacements[`${prefix}_team`] = s.teamName;
+            replacements[`${prefix}_pts`] = String(s.totalScore);
+            replacements[`${prefix}_remaining`] = String(s.remaining);
+          } else {
+            replacements[`${prefix}_rank`] = '\u2014';
+            replacements[`${prefix}_team`] = '\u2014';
+            replacements[`${prefix}_pts`] = '0';
+            replacements[`${prefix}_remaining`] = '0';
+          }
+        }
+
+        // Replace all {{...}} placeholders in template
+        let emailHtml = templateHtml;
+        for (const [key, value] of Object.entries(replacements)) {
+          emailHtml = emailHtml.replace(
+            new RegExp(`\\{\\{${key}\\}\\}`, 'g'),
+            value
+          );
+        }
+
+        // Clear kinetic tracking pixel placeholders
+        emailHtml = emailHtml.replace(/\{\{UUID\}\}/g, '');
+        emailHtml = emailHtml.replace(/\{\{SEND_ID\}\}/g, '');
+        emailHtml = emailHtml.replace(/\{\{TIMESTAMP\}\}/g, '');
 
         await resend.emails.send({
           from: 'MNSfantasy <updates@mnsfantasy.com>',
           to: member.email,
-          subject: `\u2600\uFE0F MNSfantasy Update \u2014 ${league.name} | ${dateLabel}`,
+          subject: `\u2600\uFE0F MNSfantasy Results \u2014 ${league.name} | ${dateLabel}`,
           html: emailHtml,
         });
 
