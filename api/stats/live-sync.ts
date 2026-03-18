@@ -156,6 +156,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     let statsUpserted = 0;
+    let totalSrPlayers = 0;
+    let matchedPlayers = 0;
+    let failedSummaries = 0;
+    const debugGames: { id: string; home: string; away: string; players: number; matched: number }[] = [];
 
     for (const game of liveGames) {
       const gameId = game.id;
@@ -170,6 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (!summaryRes.ok) {
         console.error(`Failed to fetch summary for game ${gameId}:`, summaryRes.status);
+        failedSummaries++;
         continue;
       }
 
@@ -190,6 +195,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
         .where(eq(activeGames.srGameId, gameId));
 
+      let gamePlayerCount = 0;
+      let gameMatchCount = 0;
+
       // Process player stats from both teams
       const teams = [summary.home, summary.away].filter(Boolean);
       for (const team of teams) {
@@ -197,6 +205,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         for (const playerData of teamPlayers) {
           const srPlayerId = playerData.id;
           if (!srPlayerId) continue;
+
+          totalSrPlayers++;
+          gamePlayerCount++;
 
           const stats = playerData.statistics || {};
           const pts = stats.points || 0;
@@ -211,6 +222,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .limit(1);
 
           if (!dbPlayer) continue;
+
+          matchedPlayers++;
+          gameMatchCount++;
 
           // Upsert tournament stats
           const [existingStat] = await db
@@ -251,6 +265,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           statsUpserted++;
         }
       }
+
+      debugGames.push({
+        id: gameId,
+        home: summary.home?.name || '?',
+        away: summary.away?.name || '?',
+        players: gamePlayerCount,
+        matched: gameMatchCount,
+      });
     }
 
     lastSyncTime = new Date();
@@ -262,6 +284,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         gamesPolled: liveGames.length,
         statsUpserted,
         syncTime: lastSyncTime.toISOString(),
+        debug: {
+          totalSrPlayers,
+          matchedPlayers,
+          failedSummaries,
+          ourTeamCount: ourTeamIds.size,
+          games: debugGames,
+        },
       },
     });
   } catch (err) {
