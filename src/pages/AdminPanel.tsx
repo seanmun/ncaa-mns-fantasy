@@ -269,6 +269,18 @@ export default function AdminPanel() {
     },
   });
 
+  // Email Test (admin only)
+  const emailTestMutation = useMutation({
+    mutationFn: () =>
+      apiFetch('/api/email/morning-update?test=true', { method: 'POST' }),
+    onSuccess: () => {
+      toast.success('Test email sent to your inbox');
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to send test email');
+    },
+  });
+
   // SportsRadar Import -- Step 1: Teams
   const importTeamsMutation = useMutation({
     mutationFn: () =>
@@ -497,16 +509,28 @@ export default function AdminPanel() {
 
         {/* Email Blast */}
         <SectionCard title="Email Blast" icon={Mail} delay={0.25}>
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => emailBlastMutation.mutate()}
-            loading={emailBlastMutation.isPending}
-            className="w-full sm:w-auto"
-          >
-            <Mail className="h-4 w-4" />
-            Send Morning Update to All Leagues
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={() => emailTestMutation.mutate()}
+              loading={emailTestMutation.isPending}
+              className="w-full sm:w-auto"
+            >
+              <Mail className="h-4 w-4" />
+              Send Test to Me
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => emailBlastMutation.mutate()}
+              loading={emailBlastMutation.isPending}
+              className="w-full sm:w-auto"
+            >
+              <Mail className="h-4 w-4" />
+              Send to All Leagues
+            </Button>
+          </div>
         </SectionCard>
 
         {/* League Overview */}

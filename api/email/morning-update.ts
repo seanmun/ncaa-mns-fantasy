@@ -88,12 +88,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const isCron =
     cronSecret === `Bearer ${process.env.CRON_SECRET}`;
 
+  let authUserId: string | null = null;
   if (!isCron) {
-    const userId = await verifyAuth(req);
-    if (!userId || !isAdmin(userId)) {
+    authUserId = await verifyAuth(req);
+    if (!authUserId || !isAdmin(authUserId)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
   }
+
+  const testMode = req.query.test === 'true';
 
   try {
     // Date boundaries: yesterday 00:00 UTC .. today 00:00 UTC
@@ -248,29 +251,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const leagueUrl = `${BASE_URL}/leagues/${league.id}`;
 
       for (const member of members) {
-        // Deduplication: check if we already sent today's morning update
-        const todayKey = todayStart.toISOString().slice(0, 10);
-        const [alreadySent] = await db
-          .select({ id: emailLog.id })
-          .from(emailLog)
-          .where(
-            and(
-              eq(emailLog.leagueId, league.id),
-              eq(emailLog.userId, member.userId),
-              eq(emailLog.emailType, 'morning_update'),
-              gte(emailLog.sentAt, todayStart)
+        // Test mode: only send to the admin who triggered it
+        if (testMode && member.userId !== authUserId) continue;
+
+        if (!testMode) {
+          // Deduplication: check if we already sent today's morning update
+          const [alreadySent] = await db
+            .select({ id: emailLog.id })
+            .from(emailLog)
+            .where(
+              and(
+                eq(emailLog.leagueId, league.id),
+                eq(emailLog.userId, member.userId),
+                eq(emailLog.emailType, 'morning_update'),
+                gte(emailLog.sentAt, todayStart)
+              )
             )
-          )
-          .limit(1);
+            .limit(1);
 
-        if (alreadySent) continue;
+          if (alreadySent) continue;
 
-        const allowed = await canSendEmail(
-          member.userId,
-          GAME_SLUG,
-          'morning_update'
-        );
-        if (!allowed) continue;
+          const allowed = await canSendEmail(
+            member.userId,
+            GAME_SLUG,
+            'morning_update'
+          );
+          if (!allowed) continue;
+        }
 
         // Collect names of players on this member's roster (for highlight)
         const memberRoster = await db
