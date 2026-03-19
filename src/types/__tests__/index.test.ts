@@ -48,41 +48,45 @@ describe('SEED_TIERS configuration', () => {
 describe('getTierForSeed', () => {
   it('returns tier 1 for seeds 1-4', () => {
     for (const seed of [1, 2, 3, 4]) {
-      expect(getTierForSeed(seed).tier).toBe(1);
+      expect(getTierForSeed(seed)!.tier).toBe(1);
     }
   });
 
   it('returns tier 2 for seeds 5-8', () => {
     for (const seed of [5, 6, 7, 8]) {
-      expect(getTierForSeed(seed).tier).toBe(2);
+      expect(getTierForSeed(seed)!.tier).toBe(2);
     }
   });
 
   it('returns tier 3 for seeds 9-12', () => {
     for (const seed of [9, 10, 11, 12]) {
-      expect(getTierForSeed(seed).tier).toBe(3);
+      expect(getTierForSeed(seed)!.tier).toBe(3);
     }
   });
 
   it('returns tier 4 for seeds 13-16', () => {
     for (const seed of [13, 14, 15, 16]) {
-      expect(getTierForSeed(seed).tier).toBe(4);
+      expect(getTierForSeed(seed)!.tier).toBe(4);
     }
   });
 
   it('returns correct picks for each tier', () => {
-    expect(getTierForSeed(1).picks).toBe(4);
-    expect(getTierForSeed(5).picks).toBe(3);
-    expect(getTierForSeed(9).picks).toBe(2);
-    expect(getTierForSeed(13).picks).toBe(1);
+    expect(getTierForSeed(1)!.picks).toBe(4);
+    expect(getTierForSeed(5)!.picks).toBe(3);
+    expect(getTierForSeed(9)!.picks).toBe(2);
+    expect(getTierForSeed(13)!.picks).toBe(1);
+  });
+
+  it('returns undefined for seed 0', () => {
+    expect(getTierForSeed(0)).toBeUndefined();
   });
 
   it('maps every seed to exactly one tier', () => {
     for (let seed = 1; seed <= 16; seed++) {
       const tier = getTierForSeed(seed);
       expect(tier).toBeDefined();
-      expect(tier.tier).toBeGreaterThanOrEqual(1);
-      expect(tier.tier).toBeLessThanOrEqual(4);
+      expect(tier!.tier).toBeGreaterThanOrEqual(1);
+      expect(tier!.tier).toBeLessThanOrEqual(4);
     }
   });
 });

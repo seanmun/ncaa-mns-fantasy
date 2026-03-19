@@ -15,7 +15,7 @@ interface SeedTierBadgeProps {
 
 export function SeedTierBadge({ seed, className }: SeedTierBadgeProps) {
   const tier = getTierForSeed(seed);
-  const colors = tierColorMap[tier.tier] ?? tierColorMap[4];
+  const colors = tierColorMap[tier?.tier ?? 4] ?? tierColorMap[4];
 
   return (
     <span

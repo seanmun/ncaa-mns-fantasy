@@ -105,7 +105,8 @@ export default function PickRoster() {
 
       const newPicks: RosterPickState = { tier1: [], tier2: [], tier3: [], tier4: [] };
       for (const player of existingRoster.players) {
-        const tierInfo = getTierForSeed(player.team.seed);
+        const tierInfo = getTierForSeed(player.team?.seed);
+        if (!tierInfo) continue;
         const key = `tier${tierInfo.tier}` as keyof RosterPickState;
         newPicks[key].push(player);
       }
@@ -128,7 +129,8 @@ export default function PickRoster() {
   const playersByTier = useMemo(() => {
     const map: Record<number, PlayerWithTeam[]> = { 1: [], 2: [], 3: [], 4: [] };
     for (const player of allPlayers) {
-      const tier = getTierForSeed(player.team.seed);
+      const tier = getTierForSeed(player.team?.seed);
+      if (!tier) continue; // skip non-tournament players (seed 0 or missing)
       map[tier.tier]?.push(player);
     }
     for (const tier of [1, 2, 3, 4]) {
@@ -361,7 +363,8 @@ export default function PickRoster() {
     const rosterPlayers = existingRoster?.players ?? [];
     const groupedByTier: Record<number, PlayerWithTeam[]> = { 1: [], 2: [], 3: [], 4: [] };
     for (const p of rosterPlayers) {
-      const tier = getTierForSeed(p.team.seed);
+      const tier = getTierForSeed(p.team?.seed);
+      if (!tier) continue;
       groupedByTier[tier.tier].push(p);
     }
 

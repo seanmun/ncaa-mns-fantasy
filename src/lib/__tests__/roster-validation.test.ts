@@ -17,7 +17,7 @@ function validateTierDistribution(seeds: number[]): {
 
   for (const seed of seeds) {
     const tier = getTierForSeed(seed);
-    tierCounts[tier.tier]++;
+    if (tier) tierCounts[tier.tier]++;
   }
 
   for (const rule of TIER_RULES) {

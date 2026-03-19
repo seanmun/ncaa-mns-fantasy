@@ -69,8 +69,9 @@ export const SEED_TIERS = [
 
 export type SeedTier = (typeof SEED_TIERS)[number];
 
-export function getTierForSeed(seed: number): SeedTier {
-  return SEED_TIERS.find((t) => (t.seeds as readonly number[]).includes(seed))!;
+export function getTierForSeed(seed: number | undefined | null): SeedTier | undefined {
+  if (seed == null || seed < 1) return undefined;
+  return SEED_TIERS.find((t) => (t.seeds as readonly number[]).includes(seed));
 }
 
 // Roster pick state for the selection page
