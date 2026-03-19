@@ -53,10 +53,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const requestedSlug = req.query.game_slug as string | undefined;
     const gameSlugs = requestedSlug ? [requestedSlug] : getActiveGameSlugs();
 
+    // Determine which date to sync: "yesterday", "today" (default), or "YYYY-MM-DD"
+    const dateParam = (req.query.date as string) || 'today';
+
     const allResults: Record<string, { gamesProcessed: number; statsUpserted: number; teamsEliminated: number; scoreboardUpdated: number }> = {};
 
     for (const gameSlug of gameSlugs) {
-      const result = await syncForGame(gameSlug, API_KEY);
+      const result = await syncForGame(gameSlug, API_KEY, dateParam);
       allResults[gameSlug] = result;
     }
 
@@ -75,48 +78,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-async function syncForGame(gameSlug: string, apiKey: string) {
+async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) {
   const BASE_URL = getSportsRadarBaseUrl(gameSlug);
 
-  // Check both today and yesterday to catch all recent games
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
+  // Resolve which date to sync
+  const targetDate = new Date();
+  if (dateParam === 'yesterday') {
+    targetDate.setDate(targetDate.getDate() - 1);
+  } else if (dateParam !== 'today' && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+    const [y, m, d] = dateParam.split('-').map(Number);
+    targetDate.setFullYear(y, m - 1, d);
+  }
+  // else "today" — use current date as-is
 
-  const dates = [yesterday, today];
-  const allGames: any[] = [];
+  const year = targetDate.getFullYear();
+  const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const day = String(targetDate.getDate()).padStart(2, '0');
 
-  for (const date of dates) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
+  const scheduleRes = await fetch(
+    `${BASE_URL}/games/${year}/${month}/${day}/schedule.json?api_key=${apiKey}`
+  );
 
-    // Rate limit between schedule calls
-    if (allGames.length > 0) {
-      await new Promise((r) => setTimeout(r, 1100));
-    }
-
-    const scheduleRes = await fetch(
-      `${BASE_URL}/games/${y}/${m}/${d}/schedule.json?api_key=${apiKey}`
-    );
-
-    if (!scheduleRes.ok) {
-      console.error(`SportsRadar schedule API error for ${gameSlug} ${y}/${m}/${d}:`, scheduleRes.status);
-      continue;
-    }
-
-    const scheduleData = await scheduleRes.json();
-    const games = scheduleData.games || [];
-    allGames.push(...games);
+  if (!scheduleRes.ok) {
+    console.error(`SportsRadar schedule API error for ${gameSlug} ${year}/${month}/${day}:`, scheduleRes.status);
+    return { gamesProcessed: 0, statsUpserted: 0, teamsEliminated: 0, scoreboardUpdated: 0 };
   }
 
-  // Deduplicate by game ID (in case a game appears on both days)
-  const seenIds = new Set<string>();
-  const games = allGames.filter((g: any) => {
-    if (!g.id || seenIds.has(g.id)) return false;
-    seenIds.add(g.id);
-    return true;
-  });
+  const scheduleData = await scheduleRes.json();
+  const games = scheduleData.games || [];
 
   if (games.length === 0) {
     return { gamesProcessed: 0, statsUpserted: 0, teamsEliminated: 0, scoreboardUpdated: 0 };
@@ -141,7 +130,7 @@ async function syncForGame(gameSlug: string, apiKey: string) {
     if (!gameId) continue;
 
     const round = game.title || game.round || 'unknown';
-    const gameDate = new Date(game.scheduled || today);
+    const gameDate = new Date(game.scheduled || targetDate);
     const scheduledTime = game.scheduled ? new Date(game.scheduled) : null;
     const isTournamentGame = ourTeamIds.has(game.home?.id) || ourTeamIds.has(game.away?.id);
 

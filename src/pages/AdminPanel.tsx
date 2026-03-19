@@ -187,14 +187,14 @@ export default function AdminPanel() {
     },
   });
 
-  // Stats Sync (daily batch — yesterday's games)
+  // Stats Sync — accepts "today" or "yesterday"
   const syncStatsMutation = useMutation({
-    mutationFn: () =>
-      apiFetch(`/api/stats/sync?game_slug=${selectedGame}`, { method: 'POST' }),
+    mutationFn: (date: 'today' | 'yesterday') =>
+      apiFetch(`/api/stats/sync?game_slug=${selectedGame}&date=${date}`, { method: 'POST' }),
     onSuccess: (data: { message: string; results: Record<string, { gamesProcessed: number; statsUpserted: number; teamsEliminated: number; scoreboardUpdated: number }> }) => {
       const gameResult = data.results?.[selectedGame] || data.results?.[Object.keys(data.results)[0]];
       if (gameResult) {
-        toast.success(`Daily sync: ${gameResult.gamesProcessed} games, ${gameResult.statsUpserted} stats, ${gameResult.teamsEliminated} eliminated, ${gameResult.scoreboardUpdated} scoreboard updated`);
+        toast.success(`Sync: ${gameResult.gamesProcessed} games, ${gameResult.statsUpserted} stats, ${gameResult.teamsEliminated} eliminated, ${gameResult.scoreboardUpdated} scoreboard`);
       } else {
         toast.success(data.message || 'Stats synced successfully');
       }
@@ -204,25 +204,6 @@ export default function AdminPanel() {
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to sync stats');
-    },
-  });
-
-  // Live Sync (today's in-progress games)
-  const liveSyncMutation = useMutation({
-    mutationFn: () =>
-      apiFetch(`/api/stats/live-sync?force=true&game_slug=${selectedGame}`, { method: 'POST' }),
-    onSuccess: (data: { message: string; results: Record<string, { gamesFound: number; gamesPolled: number; statsUpserted: number }> }) => {
-      const gameResult = data.results?.[selectedGame] || data.results?.[Object.keys(data.results)[0]];
-      if (gameResult) {
-        toast.success(`Live sync: ${gameResult.gamesFound} games found, ${gameResult.gamesPolled} polled, ${gameResult.statsUpserted} stats updated`);
-      } else {
-        toast.success(data.message || 'Live sync completed');
-      }
-      queryClient.invalidateQueries({ queryKey: ['stats-status'] });
-      queryClient.invalidateQueries({ queryKey: ['todayGames'] });
-    },
-    onError: (err: Error) => {
-      toast.error(err.message || 'Failed to live sync');
     },
   });
 
@@ -505,26 +486,29 @@ export default function AdminPanel() {
         {/* Stats Sync */}
         <SectionCard title="Stats Sync" icon={RefreshCw} delay={0.1}>
           <div className="space-y-4">
+            <p className="text-xs text-text-muted">
+              Syncs scores, player stats, and eliminations from SportsRadar.
+            </p>
             <div className="flex flex-wrap gap-3">
               <Button
                 variant="primary"
                 size="lg"
-                onClick={() => liveSyncMutation.mutate()}
-                loading={liveSyncMutation.isPending}
-                className="w-full sm:w-auto"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Live Sync (Today's Games)
-              </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={() => syncStatsMutation.mutate()}
+                onClick={() => syncStatsMutation.mutate('today')}
                 loading={syncStatsMutation.isPending}
                 className="w-full sm:w-auto"
               >
                 <RefreshCw className="h-4 w-4" />
-                Daily Sync (Yesterday)
+                Sync Today
+              </Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => syncStatsMutation.mutate('yesterday')}
+                loading={syncStatsMutation.isPending}
+                className="w-full sm:w-auto"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Sync Yesterday
               </Button>
             </div>
             {syncStatus?.lastUpdated && (
@@ -533,11 +517,6 @@ export default function AdminPanel() {
                 <span className="text-text-secondary">
                   {new Date(syncStatus.lastUpdated).toLocaleString()}
                 </span>
-              </p>
-            )}
-            {!syncStatus?.lastUpdated && (
-              <p className="text-sm text-text-muted">
-                No sync data available yet
               </p>
             )}
           </div>
