@@ -154,21 +154,19 @@ async function liveSyncForGame(gameSlug: string, apiKey: string, now: Date) {
     }
   }
 
-  // Get our tournament team names for this game to filter summary calls
+  // Get our tournament team SportsRadar IDs for this game to filter summary calls
   const ourTeamRows = await db
-    .select({ name: ncaaTeams.name, shortName: ncaaTeams.shortName })
+    .select({ sportRadarTeamId: ncaaTeams.sportRadarTeamId })
     .from(ncaaTeams)
     .where(eq(ncaaTeams.gameSlug, gameSlug));
-  const ourTeamNames = new Set(
-    ourTeamRows.flatMap((t) => [t.name.toLowerCase(), t.shortName.toLowerCase()])
+  const ourTeamIds = new Set(
+    ourTeamRows.map((t) => t.sportRadarTeamId).filter(Boolean)
   );
 
-  // Only poll games that: (1) already started AND (2) involve a tournament team
-  const liveGames = allGames.filter((g: { scheduled?: string; home?: { name?: string }; away?: { name?: string } }) => {
+  // Only poll games that: (1) already started or closed AND (2) involve a tournament team
+  const liveGames = allGames.filter((g: { scheduled?: string; status?: string; home?: { id?: string }; away?: { id?: string } }) => {
     if (!g.scheduled || new Date(g.scheduled) > now) return false;
-    const homeName = (g.home?.name || '').toLowerCase();
-    const awayName = (g.away?.name || '').toLowerCase();
-    return [...ourTeamNames].some((tn) => homeName.includes(tn) || awayName.includes(tn));
+    return ourTeamIds.has(g.home?.id) || ourTeamIds.has(g.away?.id);
   });
 
   let statsUpserted = 0;
