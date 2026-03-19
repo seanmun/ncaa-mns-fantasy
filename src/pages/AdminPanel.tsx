@@ -324,7 +324,7 @@ export default function AdminPanel() {
   // SportsRadar Import -- Step 2: Players (batched)
   const importPlayersMutation = useMutation({
     mutationFn: (offset: number) =>
-      apiFetch(`/api/admin/import-players?step=players&batchSize=25&offset=${offset}&game_slug=${selectedGame}`, {
+      apiFetch(`/api/admin/import-players?step=players&batchSize=10&offset=${offset}&game_slug=${selectedGame}`, {
         method: 'POST',
       }),
     onSuccess: (data: {

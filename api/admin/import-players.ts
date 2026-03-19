@@ -49,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (step === 'teams') {
       return await importTeams(res, BASE_URL, API_KEY, gameSlug);
     } else if (step === 'players') {
-      const batchSize = Math.min(Number(req.query.batchSize) || 25, 50);
+      const batchSize = Math.min(Number(req.query.batchSize) || 10, 50);
       const offset = Number(req.query.offset) || 0;
       return await importPlayers(res, BASE_URL, API_KEY, batchSize, offset, gameSlug);
     } else {
