@@ -8,6 +8,7 @@ export interface GameConfig {
   sportRadarPath: 'ncaamb' | 'ncaawb';
   tournamentYear: number;
   rosterLockDate: string; // ISO 8601
+  importDates: string[]; // MM/DD dates to scan for tournament teams
 }
 
 export const GAME_CONFIGS: Record<string, GameConfig> = {
@@ -18,6 +19,7 @@ export const GAME_CONFIGS: Record<string, GameConfig> = {
     sportRadarPath: 'ncaamb',
     tournamentYear: 2026,
     rosterLockDate: '2026-03-19T12:00:00-05:00',
+    importDates: ['03/17', '03/18', '03/19', '03/20', '03/21', '03/22'],
   },
   'ncaa-womens-2026': {
     slug: 'ncaa-womens-2026',
@@ -26,6 +28,7 @@ export const GAME_CONFIGS: Record<string, GameConfig> = {
     sportRadarPath: 'ncaawb',
     tournamentYear: 2026,
     rosterLockDate: '2026-03-21T18:00:00-05:00',
+    importDates: ['03/19', '03/20', '03/21', '03/22', '03/23', '03/24'],
   },
 };
 

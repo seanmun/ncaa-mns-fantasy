@@ -193,8 +193,13 @@ export default function AdminPanel() {
   const liveSyncMutation = useMutation({
     mutationFn: () =>
       apiFetch(`/api/stats/live-sync?force=true&game_slug=${selectedGame}`, { method: 'POST' }),
-    onSuccess: (data: { gamesFound: number; gamesPolled: number; statsUpserted: number }) => {
-      toast.success(`Live sync: ${data.gamesFound} games found, ${data.gamesPolled} polled, ${data.statsUpserted} stats updated`);
+    onSuccess: (data: { message: string; results: Record<string, { gamesFound: number; gamesPolled: number; statsUpserted: number }> }) => {
+      const gameResult = data.results?.[selectedGame] || data.results?.[Object.keys(data.results)[0]];
+      if (gameResult) {
+        toast.success(`Live sync: ${gameResult.gamesFound} games found, ${gameResult.gamesPolled} polled, ${gameResult.statsUpserted} stats updated`);
+      } else {
+        toast.success(data.message || 'Live sync completed');
+      }
       queryClient.invalidateQueries({ queryKey: ['stats-status'] });
       queryClient.invalidateQueries({ queryKey: ['todayGames'] });
     },

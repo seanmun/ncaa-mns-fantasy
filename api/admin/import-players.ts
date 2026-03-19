@@ -74,17 +74,7 @@ async function importTeams(
   const gameConfig = getGameConfig(gameSlug);
   const tourneyYear = String(gameConfig.tournamentYear);
 
-  // First Four: Tue Mar 17 + Wed Mar 18
-  // Round of 64: Thu Mar 19 + Fri Mar 20
-  // Round of 32: Sat Mar 21 + Sun Mar 22
-  const dates = [
-    `${tourneyYear}/03/17`,
-    `${tourneyYear}/03/18`,
-    `${tourneyYear}/03/19`,
-    `${tourneyYear}/03/20`,
-    `${tourneyYear}/03/21`,
-    `${tourneyYear}/03/22`,
-  ];
+  const dates = gameConfig.importDates.map((md) => `${tourneyYear}/${md}`);
 
   const teams = new Map<string, TourneyTeam>();
   const errors: string[] = [];
