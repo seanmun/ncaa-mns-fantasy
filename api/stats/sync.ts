@@ -129,10 +129,17 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
     const gameId = game.id;
     if (!gameId) continue;
 
+    const isTournamentGame = ourTeamIds.has(game.home?.id) || ourTeamIds.has(game.away?.id);
+
+    // Skip non-tournament games entirely (NIT, WNIT, CBI, etc.)
+    if (!isTournamentGame) {
+      apiCallsSaved++;
+      continue;
+    }
+
     const round = game.title || game.round || 'unknown';
     const gameDate = new Date(game.scheduled || targetDate);
     const scheduledTime = game.scheduled ? new Date(game.scheduled) : null;
-    const isTournamentGame = ourTeamIds.has(game.home?.id) || ourTeamIds.has(game.away?.id);
 
     // Update activeGames scoreboard from schedule data (no extra API call needed)
     const homeName = game.home?.name || game.home?.alias || 'TBD';
@@ -180,11 +187,9 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
     }
     scoreboardUpdated++;
 
-    // Only fetch summary for completed tournament team games
-    // Skip non-tournament, scheduled, and in-progress games to save API calls + avoid timeout
+    // Only fetch box score for completed games to save API calls + avoid timeout
     const isCompleted = scheduleStatus === 'closed' || scheduleStatus === 'complete';
-    if (!isTournamentGame || !isCompleted) {
-      if (!isTournamentGame) apiCallsSaved++;
+    if (!isCompleted) {
       continue;
     }
 
