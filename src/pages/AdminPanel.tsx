@@ -300,10 +300,19 @@ export default function AdminPanel() {
   const importTeamsMutation = useMutation({
     mutationFn: () =>
       apiFetch(`/api/admin/import-players?step=teams&game_slug=${selectedGame}`, { method: 'POST' }),
-    onSuccess: (data: { teamsInserted: number; teamsUpdated: number; totalProcessed: number }) => {
+    onSuccess: (data: { teamsInserted: number; teamsUpdated: number; totalProcessed: number; message?: string; errors?: string[] }) => {
       const msg = `Teams imported: ${data.teamsInserted} new, ${data.teamsUpdated} updated (${data.totalProcessed} total)`;
       toast.success(msg);
       setImportLog((prev) => [...prev, msg]);
+      if (data.errors && data.errors.length > 0) {
+        for (const err of data.errors) {
+          toast.error(err);
+          setImportLog((prev) => [...prev, `API error: ${err}`]);
+        }
+      }
+      if (data.message) {
+        setImportLog((prev) => [...prev, data.message!]);
+      }
       queryClient.invalidateQueries({ queryKey: ['players-teams'] });
     },
     onError: (err: Error) => {
