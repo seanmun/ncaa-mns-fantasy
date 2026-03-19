@@ -201,7 +201,8 @@ async function importPlayers(
   gameSlug: string
 ) {
   const gameConfig = getGameConfig(gameSlug);
-  const tourneyYear = String(gameConfig.tournamentYear);
+  // SportsRadar stores season stats under the fall start year (2025-2026 season → "2025")
+  const statsSeasonYear = String(gameConfig.tournamentYear - 1);
 
   // Get teams from DB that have a SportsRadar ID, filtered by game
   const allTeams = await db
@@ -242,7 +243,7 @@ async function importPlayers(
 
     try {
       const statsRes = await fetch(
-        `${baseUrl}/seasons/${tourneyYear}/REG/teams/${team.sportRadarTeamId}/statistics.json?api_key=${apiKey}`
+        `${baseUrl}/seasons/${statsSeasonYear}/REG/teams/${team.sportRadarTeamId}/statistics.json?api_key=${apiKey}`
       );
 
       if (!statsRes.ok) {
