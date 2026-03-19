@@ -11,7 +11,8 @@ let lastSyncTime: Date | null = null;
 const MIN_SYNC_INTERVAL_MS = 60 * 1000; // 60 seconds
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
+  // Accept GET (Vercel crons) and POST (admin panel)
+  if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -44,22 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Game-window guard: only run between 4 PM and midnight ET
     const now = new Date();
-    const etHour = parseInt(
-      now.toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false })
-    );
-    // Allow override with ?force=true for manual admin testing
-    const force = req.query.force === 'true';
-    if (!force && (etHour < 16 || etHour >= 24)) {
-      return res.status(200).json({
-        data: {
-          message: 'Outside game window (4 PM - midnight ET). Use ?force=true to override.',
-          skipped: true,
-        },
-      });
-    }
-
     const API_KEY = process.env.SPORTSRADAR_API_KEY;
     if (!API_KEY) {
       return res.status(500).json({ error: 'SportsRadar API not configured' });
