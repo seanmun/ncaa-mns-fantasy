@@ -28,7 +28,7 @@ export const GAME_CONFIGS: Record<string, GameConfig> = {
     sportRadarPath: 'ncaawb',
     tournamentYear: 2026,
     rosterLockDate: '2026-03-21T18:00:00-05:00',
-    importDates: ['03/19', '03/20', '03/21', '03/22', '03/23', '03/24'],
+    importDates: ['03/18', '03/19', '03/20', '03/21', '03/22', '03/23', '03/24'],
   },
 };
 
