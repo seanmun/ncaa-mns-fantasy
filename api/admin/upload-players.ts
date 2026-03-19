@@ -41,6 +41,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
   }
 
+  const gameSlug = (req.query.game_slug as string) || 'ncaa-mens-2026';
+
   try {
     // Accept either { players: [...] } (pre-parsed JSON) or { csv: "..." } (raw CSV string)
     let rows: PlayerCSVRow[];
@@ -95,7 +97,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .where(
             and(
               eq(ncaaTeams.name, row.team_name.trim()),
-              eq(ncaaTeams.seed, seed)
+              eq(ncaaTeams.seed, seed),
+              eq(ncaaTeams.gameSlug, gameSlug)
             )
           )
           .limit(1);
@@ -124,6 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               region: row.region.trim(),
               sportRadarTeamId: row.sportsradar_team_id?.trim() || null,
               logoUrl: row.logo_url?.trim() || null,
+              gameSlug,
             })
             .returning();
 
@@ -170,6 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           avgReb: row.avg_reb || '0',
           avgAst: row.avg_ast || '0',
           sportRadarPlayerId: row.sportsradar_player_id?.trim() || null,
+          gameSlug,
         });
       }
 

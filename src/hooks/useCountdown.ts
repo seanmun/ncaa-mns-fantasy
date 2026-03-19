@@ -12,8 +12,8 @@ interface CountdownValues {
   totalMs: number;
 }
 
-export function useCountdown(): CountdownValues {
-  const lockDate = getRosterLockDate();
+export function useCountdown(gameSlug?: string): CountdownValues {
+  const lockDate = getRosterLockDate(gameSlug);
 
   const [now, setNow] = useState(new Date());
 

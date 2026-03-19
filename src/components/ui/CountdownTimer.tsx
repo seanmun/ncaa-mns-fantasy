@@ -4,11 +4,12 @@ import { useCountdown } from '@/hooks/useCountdown';
 
 interface CountdownTimerProps {
   className?: string;
+  gameSlug?: string;
 }
 
-export function CountdownTimer({ className }: CountdownTimerProps) {
+export function CountdownTimer({ className, gameSlug }: CountdownTimerProps) {
   const { days, hours, minutes, seconds, isLocked, isUrgent, isCritical } =
-    useCountdown();
+    useCountdown(gameSlug);
 
   if (isLocked) {
     return (

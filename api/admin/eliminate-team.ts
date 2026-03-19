@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { verifyAuth, isAdmin } from '../_middleware.js';
 import { db, schema } from '../_db.js';
 import { eliminateTeamSchema, parseBody } from '../_validation.js';
@@ -32,15 +32,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { teamId, teamName, round } = parsed.data;
+    const gameSlug = (req.query.game_slug as string) || 'ncaa-mens-2026';
 
-    // Find team by ID or name
+    // Find team by ID or name, scoped to game
     const [team] = await db
       .select()
       .from(ncaaTeams)
       .where(
-        teamId
-          ? eq(ncaaTeams.id, teamId)
-          : eq(ncaaTeams.name, teamName)
+        and(
+          teamId
+            ? eq(ncaaTeams.id, teamId)
+            : eq(ncaaTeams.name, teamName),
+          eq(ncaaTeams.gameSlug, gameSlug)
+        )
       )
       .limit(1);
 

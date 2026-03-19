@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sql } from 'drizzle-orm';
+import { sql, eq, and } from 'drizzle-orm';
 import { verifyAuth } from '../_middleware.js';
 import { db, schema } from '../_db.js';
 
@@ -16,8 +16,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Fetch today's games from activeGames table
-    // Filter to games updated within the last 24 hours
+    const gameSlug = req.query.game_slug as string | undefined;
+
+    if (!gameSlug) {
+      return res.status(400).json({ error: 'game_slug query param is required' });
+    }
+
+    // Fetch today's games from activeGames table, filtered by game
     const games = await db
       .select({
         srGameId: activeGames.srGameId,
@@ -31,7 +36,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
       .from(activeGames)
       .where(
-        sql`${activeGames.updatedAt} > NOW() - INTERVAL '24 hours'`
+        and(
+          sql`${activeGames.updatedAt} > NOW() - INTERVAL '24 hours'`,
+          eq(activeGames.gameSlug, gameSlug)
+        )
       )
       .orderBy(activeGames.scheduledTime);
 

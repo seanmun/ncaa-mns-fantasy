@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import PageTransition from '@/components/layout/PageTransition';
 import { Button } from '@/components/ui/Button';
 import { RefreshCw, Mail } from 'lucide-react';
+import { GAME_CONFIGS, DEFAULT_GAME_SLUG } from '@/lib/gameConfig';
 
 import { SectionCard } from '@/components/admin/SectionCard';
 import { SportsRadarImportSection } from '@/components/admin/SportsRadarImportSection';
@@ -94,9 +95,14 @@ const TOURNAMENT_ROUNDS = [
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
+const gameOptions = Object.values(GAME_CONFIGS);
+
 export default function AdminPanel() {
   const { apiFetch } = useApi();
   const queryClient = useQueryClient();
+
+  // ---- Game selector state ----
+  const [selectedGame, setSelectedGame] = useState(DEFAULT_GAME_SLUG);
 
   // ---- Player Upload state ----
   const playerFileRef = useRef<HTMLInputElement>(null);
@@ -128,8 +134,8 @@ export default function AdminPanel() {
   });
 
   const { data: players } = useQuery<TeamInfo[]>({
-    queryKey: ['players-teams'],
-    queryFn: () => apiFetch('/api/players'),
+    queryKey: ['players-teams', selectedGame],
+    queryFn: () => apiFetch(`/api/players?game_slug=${selectedGame}`),
   });
 
   const { data: leagues } = useQuery<LeagueOverview[]>({
@@ -155,7 +161,7 @@ export default function AdminPanel() {
   // Player Upload
   const uploadPlayersMutation = useMutation({
     mutationFn: (rows: PlayerRow[]) =>
-      apiFetch('/api/admin/upload-players', {
+      apiFetch(`/api/admin/upload-players?game_slug=${selectedGame}`, {
         method: 'POST',
         body: JSON.stringify({ players: rows }),
       }),
@@ -173,7 +179,7 @@ export default function AdminPanel() {
   // Stats Sync (daily batch — yesterday's games)
   const syncStatsMutation = useMutation({
     mutationFn: () =>
-      apiFetch('/api/stats/sync', { method: 'POST' }),
+      apiFetch(`/api/stats/sync?game_slug=${selectedGame}`, { method: 'POST' }),
     onSuccess: () => {
       toast.success('Stats synced successfully');
       queryClient.invalidateQueries({ queryKey: ['stats-status'] });
@@ -186,7 +192,7 @@ export default function AdminPanel() {
   // Live Sync (today's in-progress games)
   const liveSyncMutation = useMutation({
     mutationFn: () =>
-      apiFetch('/api/stats/live-sync?force=true', { method: 'POST' }),
+      apiFetch(`/api/stats/live-sync?force=true&game_slug=${selectedGame}`, { method: 'POST' }),
     onSuccess: (data: { gamesFound: number; gamesPolled: number; statsUpserted: number }) => {
       toast.success(`Live sync: ${data.gamesFound} games found, ${data.gamesPolled} polled, ${data.statsUpserted} stats updated`);
       queryClient.invalidateQueries({ queryKey: ['stats-status'] });
@@ -217,7 +223,7 @@ export default function AdminPanel() {
   // Eliminate Team
   const eliminateTeamMutation = useMutation({
     mutationFn: () =>
-      apiFetch('/api/admin/eliminate-team', {
+      apiFetch(`/api/admin/eliminate-team?game_slug=${selectedGame}`, {
         method: 'POST',
         body: JSON.stringify({
           teamName: selectedTeam,
@@ -288,7 +294,7 @@ export default function AdminPanel() {
   // SportsRadar Import -- Step 1: Teams
   const importTeamsMutation = useMutation({
     mutationFn: () =>
-      apiFetch('/api/admin/import-players?step=teams', { method: 'POST' }),
+      apiFetch(`/api/admin/import-players?step=teams&game_slug=${selectedGame}`, { method: 'POST' }),
     onSuccess: (data: { teamsInserted: number; teamsUpdated: number; totalProcessed: number }) => {
       const msg = `Teams imported: ${data.teamsInserted} new, ${data.teamsUpdated} updated (${data.totalProcessed} total)`;
       toast.success(msg);
@@ -304,7 +310,7 @@ export default function AdminPanel() {
   // SportsRadar Import -- Step 2: Players (batched)
   const importPlayersMutation = useMutation({
     mutationFn: (offset: number) =>
-      apiFetch(`/api/admin/import-players?step=players&batchSize=25&offset=${offset}`, {
+      apiFetch(`/api/admin/import-players?step=players&batchSize=25&offset=${offset}&game_slug=${selectedGame}`, {
         method: 'POST',
       }),
     onSuccess: (data: {
@@ -393,6 +399,29 @@ export default function AdminPanel() {
           <p className="mt-1 text-sm text-text-muted">
             Admin access is verified server-side
           </p>
+        </div>
+
+        {/* ---- Game Selector ---- */}
+        <div className="rounded-xl bg-bg-card border border-bg-border p-4">
+          <span className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
+            Active Tournament
+          </span>
+          <div className="flex gap-2">
+            {gameOptions.map((game) => (
+              <button
+                key={game.slug}
+                type="button"
+                onClick={() => setSelectedGame(game.slug)}
+                className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-all duration-150 ${
+                  selectedGame === game.slug
+                    ? 'bg-neon-green text-gray-900 shadow-[0_0_15px_rgba(0,255,135,0.3)]'
+                    : 'bg-bg-primary border border-bg-border text-text-secondary hover:text-text-primary hover:bg-bg-card-hover'
+                }`}
+              >
+                {game.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* SportsRadar Import */}

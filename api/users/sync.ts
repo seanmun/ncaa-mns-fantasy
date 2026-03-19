@@ -31,22 +31,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { email, displayName, avatarUrl } = parsed.data;
 
   // Upsert: create if new, update if existing
-  await db
-    .insert(users)
-    .values({
-      id: userId,
-      email,
-      displayName,
-      avatarUrl,
-    })
-    .onConflictDoUpdate({
-      target: users.id,
-      set: {
+  try {
+    await db
+      .insert(users)
+      .values({
+        id: userId,
         email,
         displayName,
         avatarUrl,
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          email,
+          displayName,
+          avatarUrl,
+        },
+      });
+  } catch (err: unknown) {
+    // If email already exists under a different user ID, update by email
+    if (err instanceof Error && err.message?.includes('users_email_key')) {
+      await db
+        .update(users)
+        .set({ id: userId, displayName, avatarUrl })
+        .where(eq(users.email, email));
+    } else {
+      throw err;
+    }
+  }
 
   return res.status(200).json({ success: true });
 }

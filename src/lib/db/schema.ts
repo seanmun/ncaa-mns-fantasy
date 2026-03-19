@@ -44,6 +44,7 @@ export const ncaaTeams = pgTable('ncaa_teams', {
   eliminatedInRound: text('eliminated_in_round'),
   sportRadarTeamId: text('sportsradar_team_id'),
   logoUrl: text('logo_url'),
+  gameSlug: text('game_slug').notNull().default('ncaa-mens-2026'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -67,6 +68,7 @@ export const players = pgTable('players', {
     .default('0'),
   sportRadarPlayerId: text('sportsradar_player_id'),
   isActive: boolean('is_active').default(true).notNull(),
+  gameSlug: text('game_slug').notNull().default('ncaa-mens-2026'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -82,6 +84,7 @@ export const playerTournamentStats = pgTable('player_tournament_stats', {
   reb: integer('reb').default(0).notNull(),
   ast: integer('ast').default(0).notNull(),
   sportRadarGameId: text('sportsradar_game_id'),
+  gameSlug: text('game_slug').notNull().default('ncaa-mens-2026'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -102,7 +105,7 @@ export const leagues = pgTable('leagues', {
   buyInCurrency: text('buy_in_currency').default('USD'),
   cryptoWalletAddress: text('crypto_wallet_address'),
   cryptoWalletType: text('crypto_wallet_type'),
-  gameSlug: text('game_slug').notNull().default('ncaa-mens-2025'), // PLATFORM PATTERN — namespace all leagues by game
+  gameSlug: text('game_slug').notNull().default('ncaa-mens-2026'), // PLATFORM PATTERN — namespace all leagues by game
   inviteCode: text('invite_code').notNull().unique(),
   isLocked: boolean('is_locked').default(false).notNull(),
   maxMembers: integer('max_members').default(50),
@@ -159,6 +162,7 @@ export const activeGames = pgTable('active_games', {
   awayScore: integer('away_score').default(0).notNull(),
   status: text('status').notNull().default('scheduled'),
   scheduledTime: timestamp('scheduled_time'),
+  gameSlug: text('game_slug').notNull().default('ncaa-mens-2026'),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 

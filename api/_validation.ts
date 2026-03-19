@@ -5,6 +5,7 @@ import { z } from 'zod';
 export const createLeagueSchema = z.object({
   name: z.string().trim().min(1, 'League name is required').max(100),
   teamName: z.string().trim().min(1, 'Team name is required').max(50),
+  gameSlug: z.string().min(1, 'Game type is required'),
   visibility: z.enum(['public', 'private']).default('private'),
   buyInAmount: z.coerce.number().min(0).default(0).transform(String),
   buyInCurrency: z.string().max(10).default('USD'),

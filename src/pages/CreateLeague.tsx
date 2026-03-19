@@ -9,12 +9,16 @@ import { Globe, Lock, DollarSign, Users, Wallet } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import PageTransition from '@/components/layout/PageTransition';
 import { Button } from '@/components/ui/Button';
+import { GAME_CONFIGS, DEFAULT_GAME_SLUG } from '@/lib/gameConfig';
 
 /* ------------------------------------------------------------------ */
 /*  Validation schema                                                  */
 /* ------------------------------------------------------------------ */
 
+const gameOptions = Object.values(GAME_CONFIGS);
+
 const createLeagueSchema = z.object({
+  gameSlug: z.string().min(1, 'Game type is required'),
   name: z
     .string()
     .min(3, 'League name must be at least 3 characters')
@@ -58,6 +62,7 @@ export default function CreateLeague() {
   } = useForm<CreateLeagueFormData>({
     resolver: zodResolver(createLeagueSchema),
     defaultValues: {
+      gameSlug: DEFAULT_GAME_SLUG,
       visibility: 'private',
       buyInAmount: 0,
       buyInCurrency: 'USD',
@@ -65,6 +70,7 @@ export default function CreateLeague() {
     },
   });
 
+  const gameSlug = watch('gameSlug');
   const visibility = watch('visibility');
   const buyInAmount = watch('buyInAmount');
   const buyInCurrency = watch('buyInCurrency');
@@ -76,9 +82,9 @@ export default function CreateLeague() {
   const onSubmit = async (data: CreateLeagueFormData) => {
     setIsSubmitting(true);
     try {
-      // Set cryptoWalletType based on currency selection
       const payload = {
         ...data,
+        gameSlug: data.gameSlug,
         cryptoWalletType:
           data.buyInCurrency === 'ETH'
             ? 'eth'
@@ -110,6 +116,34 @@ export default function CreateLeague() {
         </h1>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* ---- Tournament ---- */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.02 }}
+            className="rounded-xl bg-bg-card border border-bg-border p-5 space-y-4"
+          >
+            <span className="block text-sm font-semibold text-text-primary">
+              Tournament
+            </span>
+            <div className="flex gap-2">
+              {gameOptions.map((game) => (
+                <button
+                  key={game.slug}
+                  type="button"
+                  onClick={() => setValue('gameSlug', game.slug)}
+                  className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-all duration-150 ${
+                    gameSlug === game.slug
+                      ? 'bg-neon-green text-gray-900 shadow-[0_0_15px_rgba(0,255,135,0.3)]'
+                      : 'bg-bg-primary border border-bg-border text-text-secondary hover:text-text-primary hover:bg-bg-card-hover'
+                  }`}
+                >
+                  {game.label}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+
           {/* ---- League Name ---- */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}

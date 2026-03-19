@@ -23,7 +23,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import type { StandingsEntry, LeagueWithDetails } from '@/types';
-import { isRosterLocked } from '@/lib/utils';
+import { isGameRosterLocked, GAME_CONFIGS } from '@/lib/gameConfig';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -90,11 +90,13 @@ export default function LeagueHome() {
   });
 
   /* ---------- Fetch today's games ---------- */
+  const gameSlug = league?.gameSlug;
   const { data: todayData } = useQuery<TodayGamesData>({
-    queryKey: ['todayGames'],
-    queryFn: () => apiFetch('/api/stats/today'),
+    queryKey: ['todayGames', gameSlug],
+    queryFn: () => apiFetch(`/api/stats/today?game_slug=${gameSlug}`),
     staleTime: 30_000,
     refetchInterval: 30_000,
+    enabled: !!gameSlug,
   });
 
   const todayGames = todayData?.games ?? [];
@@ -151,6 +153,11 @@ export default function LeagueHome() {
               <h1 className="font-display text-3xl tracking-wide text-text-primary">
                 {league.name}
               </h1>
+              {league.gameSlug && GAME_CONFIGS[league.gameSlug] && (
+                <span className="inline-flex items-center rounded-full border border-neon-cyan/30 bg-neon-cyan/10 px-2.5 py-0.5 text-xs font-semibold text-neon-cyan">
+                  {GAME_CONFIGS[league.gameSlug].shortLabel}
+                </span>
+              )}
               <span className="inline-flex items-center gap-1.5 text-sm text-text-secondary">
                 <Users className="h-4 w-4" />
                 {league.memberCount}
@@ -175,7 +182,7 @@ export default function LeagueHome() {
               </span>
             </div>
 
-            <CountdownTimer />
+            <CountdownTimer gameSlug={league.gameSlug} />
           </div>
         ) : null}
 
@@ -417,7 +424,7 @@ export default function LeagueHome() {
         </div>
 
         {/* ========== Sticky "Your Roster" button ========== */}
-        {league && !isRosterLocked() && !league.currentMemberRosterLocked && (
+        {league && !isGameRosterLocked(league.gameSlug) && !league.currentMemberRosterLocked && (
           <div className="fixed bottom-[76px] left-0 right-0 z-30 flex justify-center px-4 md:bottom-6">
             <Link to={`/leagues/${id}/pick`}>
               <Button variant="primary" size="lg" className="shadow-xl">

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { eq, and, sql, count } from 'drizzle-orm';
+import { eq, count } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { verifyAuth } from '../_middleware.js';
 import { db, schema } from '../_db.js';
@@ -25,9 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 async function handleGet(_req: VercelRequest, res: VercelResponse, userId: string) {
   try {
-    const gameSlug = process.env.GAME_SLUG || 'ncaa-mens-2025';
-
-    // Get leagues where user is a member, filtered by game slug
+    // Return ALL leagues the user is in (across all games)
     const userLeagues = await db
       .select({
         id: leagues.id,
@@ -48,12 +46,7 @@ async function handleGet(_req: VercelRequest, res: VercelResponse, userId: strin
       })
       .from(leagues)
       .innerJoin(leagueMembers, eq(leagueMembers.leagueId, leagues.id))
-      .where(
-        and(
-          eq(leagues.gameSlug, gameSlug),
-          eq(leagueMembers.userId, userId)
-        )
-      )
+      .where(eq(leagueMembers.userId, userId))
       .groupBy(leagues.id);
 
     return res.status(200).json({ data: userLeagues });
@@ -75,9 +68,8 @@ async function handlePost(req: VercelRequest, res: VercelResponse, userId: strin
   }
 
   try {
-    const { name, teamName, visibility, buyInAmount, buyInCurrency, cryptoWalletAddress, cryptoWalletType, maxMembers } = parsed.data;
+    const { name, teamName, gameSlug, visibility, buyInAmount, buyInCurrency, cryptoWalletAddress, cryptoWalletType, maxMembers } = parsed.data;
 
-    const gameSlug = process.env.GAME_SLUG || 'ncaa-mens-2025';
     const inviteCode = nanoid(8).toUpperCase();
 
     // Insert the league

@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { verifyAuth, isAdmin } from '../_middleware.js';
 import { db, schema } from '../_db.js';
+import { getGameConfig, getSportsRadarBaseUrl } from '../../src/lib/gameConfig.js';
 
 const { ncaaTeams, players } = schema;
 
@@ -35,22 +36,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: 'Admin access required' });
   }
 
-  const BASE_URL = process.env.SPORTSRADAR_BASE_URL;
   const API_KEY = process.env.SPORTSRADAR_API_KEY;
-
-  if (!BASE_URL || !API_KEY) {
+  if (!API_KEY) {
     return res.status(500).json({ error: 'SportsRadar API not configured' });
   }
 
+  const gameSlug = (req.query.game_slug as string) || 'ncaa-mens-2026';
+  const BASE_URL = getSportsRadarBaseUrl(gameSlug);
   const step = (req.query.step as string) || 'teams';
 
   try {
     if (step === 'teams') {
-      return await importTeams(res, BASE_URL, API_KEY);
+      return await importTeams(res, BASE_URL, API_KEY, gameSlug);
     } else if (step === 'players') {
       const batchSize = Math.min(Number(req.query.batchSize) || 25, 50);
       const offset = Number(req.query.offset) || 0;
-      return await importPlayers(res, BASE_URL, API_KEY, batchSize, offset);
+      return await importPlayers(res, BASE_URL, API_KEY, batchSize, offset, gameSlug);
     } else {
       return res.status(400).json({ error: 'Invalid step. Use "teams" or "players".' });
     }
@@ -67,9 +68,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 async function importTeams(
   res: VercelResponse,
   baseUrl: string,
-  apiKey: string
+  apiKey: string,
+  gameSlug: string
 ) {
-  const tourneyYear = process.env.TOURNAMENT_YEAR || '2026';
+  const gameConfig = getGameConfig(gameSlug);
+  const tourneyYear = String(gameConfig.tournamentYear);
 
   // First Four: Tue Mar 17 + Wed Mar 18
   // Round of 64: Thu Mar 19 + Fri Mar 20
@@ -152,7 +155,7 @@ async function importTeams(
     const [existing] = await db
       .select({ id: ncaaTeams.id, region: ncaaTeams.region })
       .from(ncaaTeams)
-      .where(eq(ncaaTeams.sportRadarTeamId, team.id))
+      .where(and(eq(ncaaTeams.sportRadarTeamId, team.id), eq(ncaaTeams.gameSlug, gameSlug)))
       .limit(1);
 
     if (existing) {
@@ -178,6 +181,7 @@ async function importTeams(
         region: team.region,
         sportRadarTeamId: team.id,
         isEliminated: false,
+        gameSlug,
       });
       teamsInserted++;
     }
@@ -203,11 +207,13 @@ async function importPlayers(
   baseUrl: string,
   apiKey: string,
   batchSize: number,
-  offset: number
+  offset: number,
+  gameSlug: string
 ) {
-  const tourneyYear = process.env.TOURNAMENT_YEAR || '2026';
+  const gameConfig = getGameConfig(gameSlug);
+  const tourneyYear = String(gameConfig.tournamentYear);
 
-  // Get teams from DB that have a SportsRadar ID
+  // Get teams from DB that have a SportsRadar ID, filtered by game
   const allTeams = await db
     .select({
       id: ncaaTeams.id,
@@ -215,6 +221,7 @@ async function importPlayers(
       name: ncaaTeams.name,
     })
     .from(ncaaTeams)
+    .where(eq(ncaaTeams.gameSlug, gameSlug))
     .orderBy(ncaaTeams.name);
 
   const teamsWithSrId = allTeams.filter((t) => t.sportRadarTeamId);
@@ -269,11 +276,11 @@ async function importPlayers(
         const avgReb = String(avg.rebounds ?? 0);
         const avgAst = String(avg.assists ?? 0);
 
-        // Check if player already exists by SportsRadar ID
+        // Check if player already exists by SportsRadar ID + game
         const [existing] = await db
           .select({ id: players.id })
           .from(players)
-          .where(eq(players.sportRadarPlayerId, srPlayerId))
+          .where(and(eq(players.sportRadarPlayerId, srPlayerId), eq(players.gameSlug, gameSlug)))
           .limit(1);
 
         if (existing) {
@@ -301,6 +308,7 @@ async function importPlayers(
             avgAst,
             sportRadarPlayerId: srPlayerId,
             isActive: true,
+            gameSlug,
           });
         }
 

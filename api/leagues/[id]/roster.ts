@@ -4,6 +4,7 @@ import { verifyAuth } from '../../_middleware.js';
 import { db, schema } from '../../_db.js';
 import { saveRosterSchema, parseBody } from '../../_validation.js';
 import { checkRateLimit } from '../../_rateLimit.js';
+import { isGameRosterLocked } from '../../../src/lib/gameConfig.js';
 
 const { leagues, leagueMembers, rosters, players, ncaaTeams } = schema;
 
@@ -42,13 +43,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Check roster lock date
-    const lockDateStr = process.env.ROSTER_LOCK_DATE;
-    if (lockDateStr) {
-      const lockDate = new Date(lockDateStr);
-      if (new Date() >= lockDate) {
-        return res.status(400).json({ error: 'Rosters are locked. The deadline has passed.' });
-      }
+    // Get league to check game-specific roster lock
+    const [league] = await db
+      .select({ gameSlug: leagues.gameSlug })
+      .from(leagues)
+      .where(eq(leagues.id, leagueId))
+      .limit(1);
+
+    if (!league) {
+      return res.status(404).json({ error: 'League not found' });
+    }
+
+    if (isGameRosterLocked(league.gameSlug)) {
+      return res.status(400).json({ error: 'Rosters are locked. The deadline has passed.' });
     }
 
     // Verify membership

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApi } from '@/hooks/useApi';
-import { getGameSlug, getPlatformUrl } from '@/lib/utils';
+import { getPlatformUrl } from '@/lib/utils';
+import { DEFAULT_GAME_SLUG } from '@/lib/gameConfig';
 
 export default function OnboardingModal() {
   const { user } = useUser();
@@ -56,7 +57,7 @@ export default function OnboardingModal() {
           prefNewGames,
           prefLeagueInvites,
           prefPlatformNews,
-          source: getGameSlug(),
+          source: DEFAULT_GAME_SLUG,
         }),
       });
 

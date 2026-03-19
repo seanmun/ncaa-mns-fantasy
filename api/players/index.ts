@@ -17,6 +17,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const seedTier = req.query.seed_tier as string | undefined;
+    const gameSlug = req.query.game_slug as string | undefined;
+
+    if (!gameSlug) {
+      return res.status(400).json({ error: 'game_slug query param is required' });
+    }
 
     let query = db
       .select({
@@ -62,9 +67,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'Invalid seed_tier. Must be 1, 2, 3, or 4.' });
       }
 
-      query = query.where(and(eq(players.isActive, true), inArray(ncaaTeams.seed, seeds)));
+      query = query.where(and(eq(players.isActive, true), eq(players.gameSlug, gameSlug), inArray(ncaaTeams.seed, seeds)));
     } else {
-      query = query.where(eq(players.isActive, true));
+      query = query.where(and(eq(players.isActive, true), eq(players.gameSlug, gameSlug)));
     }
 
     const rows = await query;

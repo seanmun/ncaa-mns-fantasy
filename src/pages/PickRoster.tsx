@@ -12,9 +12,9 @@ import {
 } from '@/types';
 import {
   cn,
-  isRosterLocked,
   getProjectedScore,
 } from '@/lib/utils';
+import { isGameRosterLocked, DEFAULT_GAME_SLUG } from '@/lib/gameConfig';
 import { playClick, playSuccess, playDing } from '@/lib/sounds';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
@@ -64,12 +64,20 @@ export default function PickRoster() {
   const queryClient = useQueryClient();
 
   // ---- Data fetching -----------------------------------------------------
+  const { data: league } = useQuery<{ gameSlug: string }>({
+    queryKey: ['league', leagueId],
+    queryFn: () => apiFetch(`/api/leagues/${leagueId}`),
+    enabled: !!leagueId,
+  });
+
+  const gameSlug = league?.gameSlug || DEFAULT_GAME_SLUG;
+
   const {
     data: allPlayers = [],
     isLoading: playersLoading,
   } = useQuery<PlayerWithTeam[]>({
-    queryKey: ['players'],
-    queryFn: () => apiFetch('/api/players'),
+    queryKey: ['players', gameSlug],
+    queryFn: () => apiFetch(`/api/players?game_slug=${gameSlug}`),
     staleTime: 300_000,
   });
 
@@ -90,7 +98,7 @@ export default function PickRoster() {
     if (
       existingRoster?.players?.length &&
       !hasPrePopulated.current &&
-      !isRosterLocked()
+      !isGameRosterLocked(gameSlug)
     ) {
       hasPrePopulated.current = true;
       setIsEditMode(true);
@@ -103,10 +111,10 @@ export default function PickRoster() {
       }
       setPicks(newPicks);
     }
-  }, [existingRoster]);
+  }, [existingRoster, gameSlug]);
 
   // ---- Derived state -----------------------------------------------------
-  const locked = isRosterLocked();
+  const locked = isGameRosterLocked(gameSlug);
 
   const hotThreshold = useMemo(() => {
     if (allPlayers.length === 0) return Infinity;
