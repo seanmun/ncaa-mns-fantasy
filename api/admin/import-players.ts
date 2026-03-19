@@ -99,9 +99,12 @@ async function importTeams(
 
       for (const game of data.games || []) {
         const title: string = game.title || '';
+        // Skip non-NCAA tournament games (WNIT, WBIT, CBI, etc.)
+        if (/^(WNIT|WBIT|CBI|NIT)\b/i.test(title)) continue;
+
         // Extract region from titles like "East Regional - First Round - Game 2"
-        // Also handles "Midwest Regional", "South Regional", "West Regional"
-        const regionMatch = title.match(/^(\w+)\s+Regional/);
+        // Women's use bracket names like "Utah Bracket - First Round - Game 1"
+        const regionMatch = title.match(/^(.+?)\s+(Regional|Bracket)\b/);
         const region = regionMatch ? regionMatch[1] : 'TBD';
 
         for (const side of ['home', 'away'] as const) {
