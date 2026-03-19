@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: parsed.error });
     }
 
-    const { teamId, teamName, round } = parsed.data;
+    const { teamId, teamName, round, restore } = parsed.data;
     const gameSlug = (req.query.game_slug as string) || 'ncaa-mens-2026';
 
     // Find team by ID or name, scoped to game
@@ -42,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         and(
           teamId
             ? eq(ncaaTeams.id, teamId)
-            : eq(ncaaTeams.name, teamName),
+            : eq(ncaaTeams.name, teamName!),
           eq(ncaaTeams.gameSlug, gameSlug)
         )
       )
@@ -50,6 +50,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!team) {
       return res.status(404).json({ error: 'Team not found' });
+    }
+
+    if (restore) {
+      // Un-eliminate: restore team to active status
+      if (!team.isEliminated) {
+        return res.status(400).json({
+          error: `Team "${team.name}" is not eliminated`,
+        });
+      }
+
+      const [updated] = await db
+        .update(ncaaTeams)
+        .set({
+          isEliminated: false,
+          eliminatedInRound: null,
+        })
+        .where(eq(ncaaTeams.id, team.id))
+        .returning();
+
+      return res.status(200).json({
+        data: {
+          message: `Team "${updated.name}" restored (un-eliminated)`,
+          team: updated,
+        },
+      });
     }
 
     if (team.isEliminated) {
@@ -63,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .update(ncaaTeams)
       .set({
         isEliminated: true,
-        eliminatedInRound: round,
+        eliminatedInRound: round!,
       })
       .where(eq(ncaaTeams.id, team.id))
       .returning();

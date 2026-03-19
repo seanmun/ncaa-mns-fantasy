@@ -154,6 +154,17 @@ export default function AdminPanel() {
       ].sort()
     : [];
 
+  // Extract unique eliminated teams
+  const eliminatedTeams: string[] = players
+    ? [
+        ...new Set(
+          players
+            .filter((p) => p.team.isEliminated)
+            .map((p) => p.team.name)
+        ),
+      ].sort()
+    : [];
+
   /* ---------------------------------------------------------------- */
   /*  Mutations                                                        */
   /* ---------------------------------------------------------------- */
@@ -180,9 +191,16 @@ export default function AdminPanel() {
   const syncStatsMutation = useMutation({
     mutationFn: () =>
       apiFetch(`/api/stats/sync?game_slug=${selectedGame}`, { method: 'POST' }),
-    onSuccess: () => {
-      toast.success('Stats synced successfully');
+    onSuccess: (data: { message: string; results: Record<string, { gamesProcessed: number; statsUpserted: number; teamsEliminated: number; scoreboardUpdated: number }> }) => {
+      const gameResult = data.results?.[selectedGame] || data.results?.[Object.keys(data.results)[0]];
+      if (gameResult) {
+        toast.success(`Daily sync: ${gameResult.gamesProcessed} games, ${gameResult.statsUpserted} stats, ${gameResult.teamsEliminated} eliminated, ${gameResult.scoreboardUpdated} scoreboard updated`);
+      } else {
+        toast.success(data.message || 'Stats synced successfully');
+      }
       queryClient.invalidateQueries({ queryKey: ['stats-status'] });
+      queryClient.invalidateQueries({ queryKey: ['todayGames'] });
+      queryClient.invalidateQueries({ queryKey: ['players-teams'] });
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to sync stats');
@@ -243,6 +261,22 @@ export default function AdminPanel() {
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to eliminate team');
+    },
+  });
+
+  // Restore (un-eliminate) Team
+  const restoreTeamMutation = useMutation({
+    mutationFn: (teamName: string) =>
+      apiFetch(`/api/admin/eliminate-team?game_slug=${selectedGame}`, {
+        method: 'POST',
+        body: JSON.stringify({ teamName, restore: true }),
+      }),
+    onSuccess: (_data: unknown, teamName: string) => {
+      toast.success(`${teamName} has been restored`);
+      queryClient.invalidateQueries({ queryKey: ['players-teams'] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to restore team');
     },
   });
 
@@ -530,6 +564,7 @@ export default function AdminPanel() {
         {/* Eliminate Team */}
         <EliminateTeamSection
           activeTeams={activeTeams}
+          eliminatedTeams={eliminatedTeams}
           tournamentRounds={TOURNAMENT_ROUNDS}
           selectedTeam={selectedTeam}
           selectedRound={selectedRound}
@@ -540,6 +575,8 @@ export default function AdminPanel() {
           onConfirm={() => eliminateTeamMutation.mutate()}
           onCancel={() => setShowEliminateModal(false)}
           loading={eliminateTeamMutation.isPending}
+          onRestore={(teamName) => restoreTeamMutation.mutate(teamName)}
+          restoreLoading={restoreTeamMutation.isPending}
         />
 
         {/* Deactivate Player */}

@@ -63,10 +63,14 @@ export const eliminateTeamSchema = z
   .object({
     teamId: z.string().optional(),
     teamName: z.string().optional(),
-    round: z.string().min(1, 'round is required'),
+    round: z.string().optional(),
+    restore: z.boolean().optional().default(false),
   })
   .refine((data) => data.teamId || data.teamName, {
     message: 'teamId or teamName is required',
+  })
+  .refine((data) => data.restore || data.round, {
+    message: 'round is required when eliminating (not restoring)',
   });
 
 // --- Admin: Deactivate Player ---
