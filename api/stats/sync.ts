@@ -140,21 +140,26 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
     const scheduleHomeScore = game.home?.points ?? 0;
     const scheduleAwayScore = game.away?.points ?? 0;
     const scheduleStatus = game.status || 'unknown';
+    // Don't overwrite real scores with 0-0 from schedule data
+    const hasRealScores = scheduleHomeScore > 0 || scheduleAwayScore > 0;
 
     const [existingGame] = await db
-      .select({ id: activeGames.id })
+      .select({ id: activeGames.id, homeScore: activeGames.homeScore, awayScore: activeGames.awayScore })
       .from(activeGames)
       .where(eq(activeGames.srGameId, gameId))
       .limit(1);
 
     if (existingGame) {
+      const existingHasScores = (existingGame.homeScore ?? 0) > 0 || (existingGame.awayScore ?? 0) > 0;
       await db
         .update(activeGames)
         .set({
           homeTeamName: homeName,
           awayTeamName: awayName,
-          homeScore: scheduleHomeScore,
-          awayScore: scheduleAwayScore,
+          // Only update scores if schedule has real scores, or existing has none
+          ...(hasRealScores || !existingHasScores
+            ? { homeScore: scheduleHomeScore, awayScore: scheduleAwayScore }
+            : {}),
           status: scheduleStatus,
           scheduledTime,
           gameSlug,
@@ -175,9 +180,11 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
     }
     scoreboardUpdated++;
 
-    // Only fetch summary for tournament team games (saves ~20-30 API calls per sync)
-    if (!isTournamentGame) {
-      apiCallsSaved++;
+    // Only fetch summary for completed tournament team games
+    // Skip non-tournament, scheduled, and in-progress games to save API calls + avoid timeout
+    const isCompleted = scheduleStatus === 'closed' || scheduleStatus === 'complete';
+    if (!isTournamentGame || !isCompleted) {
+      if (!isTournamentGame) apiCallsSaved++;
       continue;
     }
 
