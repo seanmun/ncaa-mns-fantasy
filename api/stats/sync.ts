@@ -187,9 +187,9 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
     }
     scoreboardUpdated++;
 
-    // Only fetch box score for completed games to save API calls + avoid timeout
-    const isCompleted = scheduleStatus === 'closed' || scheduleStatus === 'complete';
-    if (!isCompleted) {
+    // Fetch box score for in-progress and completed games (skip scheduled/future)
+    const shouldFetchStats = scheduleStatus === 'closed' || scheduleStatus === 'complete' || scheduleStatus === 'inprogress';
+    if (!shouldFetchStats) {
       continue;
     }
 
