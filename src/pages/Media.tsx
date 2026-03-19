@@ -213,7 +213,7 @@ function AdAdvanced() {
         </h2>
 
         <p className="mt-4 text-center font-body text-sm text-[#8b949e] max-w-[300px] mx-auto">
-          Forget coin-flip brackets. Draft real players. Accumulate real stats. Strategy matters.
+          Select 10 NCAA tournament players across 4 seed tiers. You earn 1 point for every PTS, REB, and AST they record. Most total points wins.
         </p>
 
         {/* Tier breakdown */}
@@ -244,7 +244,7 @@ function AdAdvanced() {
                 </div>
               </div>
               <div className="font-mono text-sm text-[#f0f4f8]">
-                {picks} pick{picks > 1 ? 's' : ''}
+                {picks} player{picks > 1 ? 's' : ''}
               </div>
             </div>
           ))}
@@ -264,7 +264,7 @@ function AdAdvanced() {
             ))}
           </div>
           <p className="mt-2 font-body text-[11px] text-[#4b5563]">
-            Eliminated teams = frozen stats. Choose wisely.
+            When a team is eliminated, their players stop earning. Choose wisely.
           </p>
         </div>
 
@@ -280,10 +280,10 @@ function AdAdvanced() {
               boxShadow: '0 0 30px rgba(0,229,255,0.3)',
             }}
           >
-            DRAFT YOUR 10
+            SELECT YOUR 10
           </div>
           <span className="font-body text-xs text-[#4b5563]">
-            10 players. 68 teams. Infinite strategy.
+            Select 10 players from 68 teams. Most total stats wins.
           </span>
         </div>
 

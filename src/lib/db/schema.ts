@@ -152,7 +152,7 @@ export const emailLog = pgTable('email_log', {
   sentAt: timestamp('sent_at').defaultNow().notNull(),
 });
 
-// Active games (live scores from SportsRadar, populated by live-sync cron)
+// Active games (live scores from SportsRadar, populated by manual sync)
 export const activeGames = pgTable('active_games', {
   id: uuid('id').primaryKey().defaultRandom(),
   srGameId: text('sr_game_id').notNull().unique(),

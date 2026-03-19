@@ -5,7 +5,7 @@ import Papa from 'papaparse';
 import { toast } from 'sonner';
 import PageTransition from '@/components/layout/PageTransition';
 import { Button } from '@/components/ui/Button';
-import { RefreshCw, Mail } from 'lucide-react';
+import { RefreshCw, Mail, Trash2 } from 'lucide-react';
 import { GAME_CONFIGS, DEFAULT_GAME_SLUG } from '@/lib/gameConfig';
 
 import { SectionCard } from '@/components/admin/SectionCard';
@@ -311,6 +311,20 @@ export default function AdminPanel() {
     },
   });
 
+  // Clear Play-in Data
+  const clearPlayinMutation = useMutation({
+    mutationFn: () =>
+      apiFetch('/api/admin/clear-playin-data', { method: 'POST' }),
+    onSuccess: (data: { deletedStats: number; deletedGames: number }) => {
+      toast.success(`Cleared ${data.deletedStats} stats, ${data.deletedGames} games`);
+      queryClient.invalidateQueries({ queryKey: ['stats-status'] });
+      queryClient.invalidateQueries({ queryKey: ['todayGames'] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to clear play-in data');
+    },
+  });
+
   // SportsRadar Import -- Step 1: Teams
   const importTeamsMutation = useMutation({
     mutationFn: () =>
@@ -509,6 +523,20 @@ export default function AdminPanel() {
               >
                 <RefreshCw className="h-4 w-4" />
                 Sync Yesterday
+              </Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => {
+                  if (window.confirm('Clear ALL player stats and active games? This cannot be undone.')) {
+                    clearPlayinMutation.mutate();
+                  }
+                }}
+                loading={clearPlayinMutation.isPending}
+                className="w-full sm:w-auto text-red-400 border-red-400/30 hover:bg-red-400/10"
+              >
+                <Trash2 className="h-4 w-4" />
+                Clear Stats & Scores
               </Button>
             </div>
             {syncStatus?.lastUpdated && (
