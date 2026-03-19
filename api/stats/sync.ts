@@ -78,25 +78,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 async function syncForGame(gameSlug: string, apiKey: string) {
   const BASE_URL = getSportsRadarBaseUrl(gameSlug);
 
-  // Get yesterday's date for game lookup
+  // Check both today and yesterday to catch all recent games
+  const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const year = yesterday.getFullYear();
-  const month = String(yesterday.getMonth() + 1).padStart(2, '0');
-  const day = String(yesterday.getDate()).padStart(2, '0');
 
-  // Fetch tournament schedule to find yesterday's games
-  const scheduleRes = await fetch(
-    `${BASE_URL}/games/${year}/${month}/${day}/schedule.json?api_key=${apiKey}`
-  );
+  const dates = [yesterday, today];
+  const allGames: any[] = [];
 
-  if (!scheduleRes.ok) {
-    console.error(`SportsRadar schedule API error for ${gameSlug}:`, scheduleRes.status);
-    return { gamesProcessed: 0, statsUpserted: 0, teamsEliminated: 0, scoreboardUpdated: 0 };
+  for (const date of dates) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+
+    // Rate limit between schedule calls
+    if (allGames.length > 0) {
+      await new Promise((r) => setTimeout(r, 1100));
+    }
+
+    const scheduleRes = await fetch(
+      `${BASE_URL}/games/${y}/${m}/${d}/schedule.json?api_key=${apiKey}`
+    );
+
+    if (!scheduleRes.ok) {
+      console.error(`SportsRadar schedule API error for ${gameSlug} ${y}/${m}/${d}:`, scheduleRes.status);
+      continue;
+    }
+
+    const scheduleData = await scheduleRes.json();
+    const games = scheduleData.games || [];
+    allGames.push(...games);
   }
 
-  const scheduleData = await scheduleRes.json();
-  const games = scheduleData.games || [];
+  // Deduplicate by game ID (in case a game appears on both days)
+  const seenIds = new Set<string>();
+  const games = allGames.filter((g: any) => {
+    if (!g.id || seenIds.has(g.id)) return false;
+    seenIds.add(g.id);
+    return true;
+  });
 
   if (games.length === 0) {
     return { gamesProcessed: 0, statsUpserted: 0, teamsEliminated: 0, scoreboardUpdated: 0 };
@@ -121,7 +141,7 @@ async function syncForGame(gameSlug: string, apiKey: string) {
     if (!gameId) continue;
 
     const round = game.title || game.round || 'unknown';
-    const gameDate = new Date(game.scheduled || yesterday);
+    const gameDate = new Date(game.scheduled || today);
     const scheduledTime = game.scheduled ? new Date(game.scheduled) : null;
     const isTournamentGame = ourTeamIds.has(game.home?.id) || ourTeamIds.has(game.away?.id);
 
