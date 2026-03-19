@@ -182,7 +182,12 @@ export default function LeagueHome() {
               </span>
             </div>
 
-            <CountdownTimer gameSlug={league.gameSlug} />
+            <div className="flex flex-col items-end gap-1">
+              <CountdownTimer gameSlug={league.gameSlug} />
+              <p className="text-[11px] text-text-muted max-w-[220px] text-right leading-tight">
+                Play-in game points don't count. Those stats will be cleared once all play-in games are complete.
+              </p>
+            </div>
           </div>
         ) : null}
 
