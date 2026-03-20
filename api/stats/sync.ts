@@ -297,14 +297,15 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
 
         const stats = playerData.statistics || {};
         const pts = stats.points || 0;
-
-        // FIX: Calculate rebounds from offensive + defensive to avoid API bug
-        // SportsRadar API appears to have bug where 'rebounds' field is doubled
-        const oreb = stats.offensive_rebounds || 0;
-        const dreb = stats.defensive_rebounds || 0;
-        const reb = oreb + dreb;
-
         const ast = stats.assists || 0;
+
+        // Rebounds: try offensive+defensive first, fallback to total rebounds field
+        let reb = 0;
+        if (stats.offensive_rebounds !== undefined && stats.defensive_rebounds !== undefined) {
+          reb = (stats.offensive_rebounds || 0) + (stats.defensive_rebounds || 0);
+        } else if (stats.rebounds !== undefined) {
+          reb = stats.rebounds || 0;
+        }
 
         // Find matching player in our DB by SportsRadar ID + game
         const [dbPlayer] = await db
