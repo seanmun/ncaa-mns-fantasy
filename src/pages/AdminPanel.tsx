@@ -195,15 +195,21 @@ export default function AdminPanel() {
       const gameResult = data.results?.[selectedGame] || data.results?.[Object.keys(data.results)[0]];
       if (gameResult) {
         let msg = `Games: ${gameResult.gamesProcessed}, Stats: ${gameResult.statsUpserted}, Box scores: ${gameResult.boxScoresFetched || 0}`;
-        if (gameResult.playersNotMatched && gameResult.playersNotMatched > 0) {
-          msg += `, Players not matched: ${gameResult.playersNotMatched}`;
-        }
+
+        // ALWAYS show players not matched count (even if 0) to help debug
+        msg += `, Players not matched: ${gameResult.playersNotMatched ?? '?'}`;
+
         if (gameResult.errors && gameResult.errors.length > 0) {
           toast.error(`ERRORS: ${gameResult.errors.join('; ')}`, { duration: 10000 });
         } else if (gameResult.statsUpserted > 0) {
           toast.success(msg);
         } else {
-          toast.warning(msg + ' - No stats synced!', { duration: 10000 });
+          // If 0 stats but box scores were fetched, this is a critical error
+          if ((gameResult.boxScoresFetched || 0) > 0) {
+            toast.error(msg + ' - PLAYER MATCHING FAILED! Check Vercel logs', { duration: 15000 });
+          } else {
+            toast.warning(msg + ' - No stats synced!', { duration: 10000 });
+          }
         }
       } else {
         toast.success(data.message || 'Stats synced successfully');
