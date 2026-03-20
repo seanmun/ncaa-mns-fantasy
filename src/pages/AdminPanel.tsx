@@ -191,10 +191,20 @@ export default function AdminPanel() {
   const syncStatsMutation = useMutation({
     mutationFn: (date: 'today' | 'yesterday') =>
       apiFetch(`/api/stats/sync?game_slug=${selectedGame}&date=${date}`, { method: 'POST' }),
-    onSuccess: (data: { message: string; results: Record<string, { gamesProcessed: number; statsUpserted: number; teamsEliminated: number; scoreboardUpdated: number }> }) => {
+    onSuccess: (data: { message: string; results: Record<string, { gamesProcessed: number; statsUpserted: number; teamsEliminated: number; scoreboardUpdated: number; boxScoresFetched?: number; playersNotMatched?: number; errors?: string[] }> }) => {
       const gameResult = data.results?.[selectedGame] || data.results?.[Object.keys(data.results)[0]];
       if (gameResult) {
-        toast.success(`Sync: ${gameResult.gamesProcessed} games, ${gameResult.statsUpserted} stats, ${gameResult.teamsEliminated} eliminated, ${gameResult.scoreboardUpdated} scoreboard`);
+        let msg = `Games: ${gameResult.gamesProcessed}, Stats: ${gameResult.statsUpserted}, Box scores: ${gameResult.boxScoresFetched || 0}`;
+        if (gameResult.playersNotMatched && gameResult.playersNotMatched > 0) {
+          msg += `, Players not matched: ${gameResult.playersNotMatched}`;
+        }
+        if (gameResult.errors && gameResult.errors.length > 0) {
+          toast.error(`ERRORS: ${gameResult.errors.join('; ')}`, { duration: 10000 });
+        } else if (gameResult.statsUpserted > 0) {
+          toast.success(msg);
+        } else {
+          toast.warning(msg + ' - No stats synced!', { duration: 10000 });
+        }
       } else {
         toast.success(data.message || 'Stats synced successfully');
       }
