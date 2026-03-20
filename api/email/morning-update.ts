@@ -117,6 +117,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const testMode = req.query.test === 'true';
 
+  // NEW: Allow manual email override (comma-separated list)
+  const manualEmails = req.query.emails as string | undefined;
+  const manualEmailList = manualEmails
+    ? manualEmails.split(',').map(e => e.trim().toLowerCase())
+    : null;
+
   try {
     // Read HTML template (inside handler so errors are caught)
     let templateHtml: string;
@@ -256,7 +262,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Test mode: only send to the admin who triggered it
         if (testMode && member.userId !== authUserId) continue;
 
-        if (!testMode) {
+        // NEW: Manual email filter - only send to specified emails
+        if (manualEmailList) {
+          if (!manualEmailList.includes(member.email.toLowerCase())) {
+            continue;
+          }
+          // Skip all other checks if manually specified
+        } else if (!testMode) {
+          // Normal mode: check preferences and deduplication
           // Deduplication check
           const [alreadySent] = await db
             .select({ id: emailLog.id })
@@ -380,7 +393,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({
       success: true,
       emailsSent: totalSent,
-      debug: { authUserId, testMode, leaguesFound: allLeagues.length },
+      debug: {
+        authUserId,
+        testMode,
+        manualEmails: manualEmailList,
+        leaguesFound: allLeagues.length
+      },
     });
   } catch (err: any) {
     console.error('Morning update email error:', err);
