@@ -82,15 +82,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, debugInfo: string[] = []) {
   const BASE_URL = getSportsRadarBaseUrl(gameSlug);
 
-  // Resolve which date to sync
-  const targetDate = new Date();
+  // Resolve which date to sync - USE EASTERN TIME for NCAA games
+  // Server is UTC, but games are played in US timezones
+  const now = new Date();
+  const estOffset = -5 * 60; // EST is UTC-5
+  const estDate = new Date(now.getTime() + (now.getTimezoneOffset() + estOffset) * 60000);
+
+  let targetDate = estDate;
   if (dateParam === 'yesterday') {
+    targetDate = new Date(estDate);
     targetDate.setDate(targetDate.getDate() - 1);
   } else if (dateParam !== 'today' && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
     const [y, m, d] = dateParam.split('-').map(Number);
-    targetDate.setFullYear(y, m - 1, d);
+    targetDate = new Date(y, m - 1, d);
   }
-  // else "today" — use current date as-is
+  // else "today" — use EST date
 
   const year = targetDate.getFullYear();
   const month = String(targetDate.getMonth() + 1).padStart(2, '0');
