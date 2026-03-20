@@ -210,11 +210,12 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
     );
 
     if (!boxScoreRes.ok) {
-      console.error(`Failed to fetch box score for game ${gameId}:`, boxScoreRes.status);
+      console.error(`[${gameSlug}] Failed to fetch box score for game ${gameId}:`, boxScoreRes.status);
       continue;
     }
 
     const boxScore = await boxScoreRes.json();
+    console.log(`[${gameSlug}] Box score fetched for ${gameId}, status: ${boxScore.status}`);
     const gameStatus = boxScore.status || game.status || 'unknown';
 
     // Update scoreboard with more accurate summary scores
@@ -246,8 +247,10 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
 
     // Process player stats from both teams
     const teams = [boxScore.home, boxScore.away].filter(Boolean);
+    console.log(`[${gameSlug}] Processing ${teams.length} teams for game ${gameId}`);
     for (const team of teams) {
       const teamPlayers = team.players || [];
+      console.log(`[${gameSlug}] Team ${team.name || 'unknown'} has ${teamPlayers.length} players in box score`);
       for (const playerData of teamPlayers) {
         const srPlayerId = playerData.id;
         if (!srPlayerId) continue;
@@ -259,12 +262,17 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
 
         // Find matching player in our DB by SportsRadar ID + game
         const [dbPlayer] = await db
-          .select({ id: players.id })
+          .select({ id: players.id, name: players.name })
           .from(players)
           .where(and(eq(players.sportRadarPlayerId, srPlayerId), eq(players.gameSlug, gameSlug)))
           .limit(1);
 
-        if (!dbPlayer) continue;
+        if (!dbPlayer) {
+          console.log(`[${gameSlug}] Player not found in DB: ${playerData.full_name || playerData.name} (SR ID: ${srPlayerId})`);
+          continue;
+        }
+
+        console.log(`[${gameSlug}] Matched player: ${dbPlayer.name} - ${pts}pts, ${reb}reb, ${ast}ast`);
 
         // Upsert tournament stats
         const [existing] = await db
