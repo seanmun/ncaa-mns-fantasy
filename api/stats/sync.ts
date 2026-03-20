@@ -130,6 +130,9 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
   let scoreboardUpdated = 0;
   let apiCallsSaved = 0;
   const eliminatedTeamIds: { srTeamId: string; round: string }[] = [];
+  const errors: string[] = [];
+  let boxScoresFetched = 0;
+  let playersNotMatched = 0;
 
   for (const game of games) {
     const gameId = game.id;
@@ -207,9 +210,13 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
     );
 
     if (!boxScoreRes.ok) {
-      console.error(`[${gameSlug}] Failed to fetch box score for game ${gameId}:`, boxScoreRes.status);
+      const errMsg = `Box score API failed: ${awayName}@${homeName} - HTTP ${boxScoreRes.status}`;
+      errors.push(errMsg);
+      console.error(`[${gameSlug}] ${errMsg}`);
       continue;
     }
+
+    boxScoresFetched++;
 
     const boxScore = await boxScoreRes.json();
     console.log(`[${gameSlug}] Box score fetched for ${gameId}, status: ${boxScore.status}`);
@@ -265,6 +272,7 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
           .limit(1);
 
         if (!dbPlayer) {
+          playersNotMatched++;
           console.log(`[${gameSlug}] Player not found in DB: ${playerData.full_name || playerData.name} (SR ID: ${srPlayerId})`);
           continue;
         }
@@ -334,5 +342,13 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
     if (result.length > 0) teamsEliminated++;
   }
 
-  return { gamesProcessed: games.length, statsUpserted, teamsEliminated, scoreboardUpdated };
+  return {
+    gamesProcessed: games.length,
+    statsUpserted,
+    teamsEliminated,
+    scoreboardUpdated,
+    boxScoresFetched,
+    playersNotMatched,
+    errors: errors.length > 0 ? errors : undefined
+  };
 }
