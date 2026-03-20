@@ -194,16 +194,8 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
     }
     scoreboardUpdated++;
 
-    // Fetch box score for in-progress and completed games (skip scheduled/future)
-    const shouldFetchStats = scheduleStatus === 'closed' || scheduleStatus === 'complete' || scheduleStatus === 'inprogress';
-    if (!shouldFetchStats) {
-      const msg = `SKIPPED ${awayName}@${homeName}: status="${scheduleStatus}"`;
-      debugInfo.push(msg);
-      console.log(`[${gameSlug}] Skipping stats fetch for game ${gameId} (status: ${scheduleStatus})`);
-      continue;
-    }
-
-    debugInfo.push(`FETCHING ${awayName}@${homeName}: status="${scheduleStatus}"`);
+    // Fetch box score for ALL tournament games (don't filter by status)
+    console.log(`[${gameSlug}] Fetching stats for game: ${awayName} @ ${homeName} (status: ${scheduleStatus})`);
 
     console.log(`[${gameSlug}] Fetching stats for game: ${awayName} @ ${homeName} (status: ${scheduleStatus})`);
 
