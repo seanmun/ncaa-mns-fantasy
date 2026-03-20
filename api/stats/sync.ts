@@ -200,8 +200,6 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
     // Fetch box score for ALL tournament games (don't filter by status)
     console.log(`[${gameSlug}] Fetching stats for game: ${awayName} @ ${homeName} (status: ${scheduleStatus})`);
 
-    console.log(`[${gameSlug}] Fetching stats for game: ${awayName} @ ${homeName} (status: ${scheduleStatus})`);
-
     // Add small delay to respect API rate limits
     await new Promise((resolve) => setTimeout(resolve, 1100));
 
@@ -252,12 +250,44 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
     // Process player stats from both teams
     const teams = [boxScore.home, boxScore.away].filter(Boolean);
     console.log(`[${gameSlug}] Processing ${teams.length} teams for game ${gameId}`);
+
     for (const team of teams) {
       const teamPlayers = team.players || [];
-      console.log(`[${gameSlug}] Team ${team.name || 'unknown'} has ${teamPlayers.length} players in box score`);
+      const srTeamId = team.id;
+      console.log(`[${gameSlug}] Team ${team.name || 'unknown'} (SR ID: ${srTeamId}) has ${teamPlayers.length} players in box score`);
+
+      // DIAGNOSTIC: Check if this team exists in our DB
+      const [dbTeam] = await db
+        .select({ id: ncaaTeams.id, name: ncaaTeams.name, sportRadarTeamId: ncaaTeams.sportRadarTeamId })
+        .from(ncaaTeams)
+        .where(and(eq(ncaaTeams.sportRadarTeamId, srTeamId), eq(ncaaTeams.gameSlug, gameSlug)))
+        .limit(1);
+
+      if (!dbTeam) {
+        console.error(`[${gameSlug}] ⚠️ TEAM NOT IN DATABASE: ${team.name} (SR ID: ${srTeamId})`);
+        continue;
+      }
+
+      console.log(`[${gameSlug}] ✓ Team found in DB: ${dbTeam.name}`);
+
+      // DIAGNOSTIC: Get all players for this team from DB to see what SR IDs we have
+      const dbTeamPlayers = await db
+        .select({
+          id: players.id,
+          name: players.name,
+          sportRadarPlayerId: players.sportRadarPlayerId
+        })
+        .from(players)
+        .where(and(eq(players.teamId, dbTeam.id), eq(players.gameSlug, gameSlug)));
+
+      console.log(`[${gameSlug}] DB has ${dbTeamPlayers.length} players for ${dbTeam.name}, ${dbTeamPlayers.filter(p => p.sportRadarPlayerId).length} have SR IDs`);
+
       for (const playerData of teamPlayers) {
         const srPlayerId = playerData.id;
-        if (!srPlayerId) continue;
+        if (!srPlayerId) {
+          console.log(`[${gameSlug}] ⚠️ Player from box score has no ID: ${playerData.full_name || playerData.name}`);
+          continue;
+        }
 
         const stats = playerData.statistics || {};
         const pts = stats.points || 0;
@@ -273,11 +303,27 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
 
         if (!dbPlayer) {
           playersNotMatched++;
-          console.log(`[${gameSlug}] Player not found in DB: ${playerData.full_name || playerData.name} (SR ID: ${srPlayerId})`);
+          console.error(`[${gameSlug}] ❌ PLAYER NOT FOUND: ${playerData.full_name || playerData.name} (SR ID: ${srPlayerId})`);
+          console.error(`[${gameSlug}]    Box score team: ${team.name} (${srTeamId})`);
+          console.error(`[${gameSlug}]    Stats: ${pts}pts ${reb}reb ${ast}ast`);
+
+          // DIAGNOSTIC: Try to find player by team only
+          const [playerByTeam] = await db
+            .select({ id: players.id, name: players.name, sportRadarPlayerId: players.sportRadarPlayerId })
+            .from(players)
+            .where(and(eq(players.teamId, dbTeam.id), eq(players.gameSlug, gameSlug)))
+            .limit(1);
+
+          if (playerByTeam) {
+            console.error(`[${gameSlug}]    Example player from this team in DB: ${playerByTeam.name} (SR ID: ${playerByTeam.sportRadarPlayerId || 'NULL'})`);
+          } else {
+            console.error(`[${gameSlug}]    No players found in DB for team ${dbTeam.name}`);
+          }
+
           continue;
         }
 
-        console.log(`[${gameSlug}] Matched player: ${dbPlayer.name} - ${pts}pts, ${reb}reb, ${ast}ast`);
+        console.log(`[${gameSlug}] ✓ Matched player: ${dbPlayer.name} - ${pts}pts, ${reb}reb, ${ast}ast`);
 
         // Upsert tournament stats
         const [existing] = await db
