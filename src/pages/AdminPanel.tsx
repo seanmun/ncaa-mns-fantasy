@@ -203,7 +203,9 @@ export default function AdminPanel() {
       queryClient.invalidateQueries({ queryKey: ['players-teams'] });
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Failed to sync stats');
+      // Show detailed error message (includes rate limit wait time if applicable)
+      toast.error(err.message || 'Failed to sync stats', { duration: 5000 });
+      console.error('Sync error:', err.message);
     },
   });
 

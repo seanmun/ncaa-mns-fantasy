@@ -8,7 +8,7 @@ const { players, ncaaTeams, playerTournamentStats, activeGames } = schema;
 
 // In-memory last sync tracker (per cold start — for persistent tracking use DB)
 let lastSyncTime: Date | null = null;
-const MIN_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+const MIN_SYNC_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes (reduced for manual testing)
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -107,7 +107,10 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
   const scheduleData = await scheduleRes.json();
   const games = scheduleData.games || [];
 
+  console.log(`[${gameSlug}] Schedule for ${year}/${month}/${day}: ${games.length} games found`);
+
   if (games.length === 0) {
+    console.log(`[${gameSlug}] No games in schedule for ${year}/${month}/${day}`);
     return { gamesProcessed: 0, statsUpserted: 0, teamsEliminated: 0, scoreboardUpdated: 0 };
   }
 
@@ -119,6 +122,8 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
   const ourTeamIds = new Set(
     ourTeamRows.map((t) => t.sportRadarTeamId).filter(Boolean)
   );
+
+  console.log(`[${gameSlug}] Found ${ourTeamIds.size} tournament teams in database`);
 
   let statsUpserted = 0;
   let scoreboardUpdated = 0;
@@ -134,6 +139,7 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
     // Skip non-tournament games entirely (NIT, WNIT, CBI, etc.)
     if (!isTournamentGame) {
       apiCallsSaved++;
+      console.log(`[${gameSlug}] Skipping non-tournament game: ${game.away?.name || 'TBD'} @ ${game.home?.name || 'TBD'}`);
       continue;
     }
 
@@ -190,8 +196,11 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
     // Fetch box score for in-progress and completed games (skip scheduled/future)
     const shouldFetchStats = scheduleStatus === 'closed' || scheduleStatus === 'complete' || scheduleStatus === 'inprogress';
     if (!shouldFetchStats) {
+      console.log(`[${gameSlug}] Skipping stats fetch for game ${gameId} (status: ${scheduleStatus})`);
       continue;
     }
+
+    console.log(`[${gameSlug}] Fetching stats for game: ${awayName} @ ${homeName} (status: ${scheduleStatus})`);
 
     // Add small delay to respect API rate limits
     await new Promise((resolve) => setTimeout(resolve, 1100));
