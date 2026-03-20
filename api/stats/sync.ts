@@ -209,14 +209,18 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
     // Add small delay to respect API rate limits
     await new Promise((resolve) => setTimeout(resolve, 1100));
 
-    const boxScoreRes = await fetch(
-      `${BASE_URL}/games/${gameId}/summary.json?api_key=${apiKey}`
-    );
+    const boxScoreUrl = `${BASE_URL}/games/${gameId}/summary.json?api_key=${apiKey}`;
+    console.log(`[${gameSlug}] 📡 Fetching box score: ${boxScoreUrl}`);
+
+    const boxScoreRes = await fetch(boxScoreUrl);
 
     if (!boxScoreRes.ok) {
+      const errorBody = await boxScoreRes.text().catch(() => 'Unable to read error body');
       const errMsg = `Box score API failed: ${awayName}@${homeName} - HTTP ${boxScoreRes.status}`;
       errors.push(errMsg);
-      console.error(`[${gameSlug}] ${errMsg}`);
+      console.error(`[${gameSlug}] ❌ ${errMsg}`);
+      console.error(`[${gameSlug}] 📋 Error response: ${errorBody}`);
+      console.error(`[${gameSlug}] 🔗 Failed URL: ${boxScoreUrl}`);
       continue;
     }
 
@@ -307,6 +311,12 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
           reb = stats.rebounds || 0;
         }
 
+        // Log stats being processed
+        console.log(`[${gameSlug}] 📊 Processing: ${playerData.full_name || playerData.name} - ${pts}pts ${reb}reb ${ast}ast (SR ID: ${srPlayerId})`);
+        if (stats.offensive_rebounds === undefined && stats.defensive_rebounds === undefined && stats.rebounds === undefined) {
+          console.warn(`[${gameSlug}] ⚠️  NO REBOUND DATA for ${playerData.full_name || playerData.name} - stats object:`, JSON.stringify(stats));
+        }
+
         // Find matching player in our DB by SportsRadar ID + game
         const [dbPlayer] = await db
           .select({ id: players.id, name: players.name })
@@ -316,9 +326,12 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
 
         if (!dbPlayer) {
           playersNotMatched++;
-          console.error(`[${gameSlug}] ❌ PLAYER NOT FOUND: ${playerData.full_name || playerData.name} (SR ID: ${srPlayerId})`);
-          console.error(`[${gameSlug}]    Box score team: ${team.name} (${srTeamId})`);
-          console.error(`[${gameSlug}]    Stats: ${pts}pts ${reb}reb ${ast}ast`);
+          console.error(`[${gameSlug}] ❌❌❌ PLAYER NOT FOUND IN DATABASE ❌❌❌`);
+          console.error(`[${gameSlug}]    Player Name: ${playerData.full_name || playerData.name}`);
+          console.error(`[${gameSlug}]    SportsRadar ID: ${srPlayerId}`);
+          console.error(`[${gameSlug}]    Box Score Team: ${team.name} (SR Team ID: ${srTeamId})`);
+          console.error(`[${gameSlug}]    Stats Lost: ${pts}pts ${reb}reb ${ast}ast`);
+          console.error(`[${gameSlug}]    Full Player Object:`, JSON.stringify(playerData, null, 2));
 
           // DIAGNOSTIC: Try to find player by team only
           const [playerByTeam] = await db
@@ -328,9 +341,9 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
             .limit(1);
 
           if (playerByTeam) {
-            console.error(`[${gameSlug}]    Example player from this team in DB: ${playerByTeam.name} (SR ID: ${playerByTeam.sportRadarPlayerId || 'NULL'})`);
+            console.error(`[${gameSlug}]    ℹ️  Example player from this team in DB: ${playerByTeam.name} (SR ID: ${playerByTeam.sportRadarPlayerId || 'NULL'})`);
           } else {
-            console.error(`[${gameSlug}]    No players found in DB for team ${dbTeam.name}`);
+            console.error(`[${gameSlug}]    ⚠️  NO PLAYERS FOUND IN DB for team ${dbTeam.name} - team might not be imported!`);
           }
 
           continue;
@@ -401,13 +414,18 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
     if (result.length > 0) teamsEliminated++;
   }
 
-  return {
+  const summary = {
     gamesProcessed: games.length,
     statsUpserted,
     teamsEliminated,
     scoreboardUpdated,
     boxScoresFetched,
     playersNotMatched,
+    apiCallsSaved,
     errors: errors.length > 0 ? errors : undefined
   };
+
+  console.log(`[${gameSlug}] 📊 SYNC COMPLETE:`, JSON.stringify(summary, null, 2));
+
+  return summary;
 }
