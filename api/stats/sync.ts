@@ -56,11 +56,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Determine which date to sync: "yesterday", "today" (default), or "YYYY-MM-DD"
     const dateParam = (req.query.date as string) || 'today';
 
-    const allResults: Record<string, { gamesProcessed: number; statsUpserted: number; teamsEliminated: number; scoreboardUpdated: number }> = {};
+    const allResults: Record<string, { gamesProcessed: number; statsUpserted: number; teamsEliminated: number; scoreboardUpdated: number; debug?: string[] }> = {};
+  const debugInfo: string[] = [];
 
     for (const gameSlug of gameSlugs) {
-      const result = await syncForGame(gameSlug, API_KEY, dateParam);
-      allResults[gameSlug] = result;
+      const result = await syncForGame(gameSlug, API_KEY, dateParam, debugInfo);
+      allResults[gameSlug] = { ...result, debug: debugInfo };
     }
 
     lastSyncTime = new Date();
@@ -78,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) {
+async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, debugInfo: string[] = []) {
   const BASE_URL = getSportsRadarBaseUrl(gameSlug);
 
   // Resolve which date to sync
@@ -196,9 +197,13 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string) 
     // Fetch box score for in-progress and completed games (skip scheduled/future)
     const shouldFetchStats = scheduleStatus === 'closed' || scheduleStatus === 'complete' || scheduleStatus === 'inprogress';
     if (!shouldFetchStats) {
+      const msg = `SKIPPED ${awayName}@${homeName}: status="${scheduleStatus}"`;
+      debugInfo.push(msg);
       console.log(`[${gameSlug}] Skipping stats fetch for game ${gameId} (status: ${scheduleStatus})`);
       continue;
     }
+
+    debugInfo.push(`FETCHING ${awayName}@${homeName}: status="${scheduleStatus}"`);
 
     console.log(`[${gameSlug}] Fetching stats for game: ${awayName} @ ${homeName} (status: ${scheduleStatus})`);
 
