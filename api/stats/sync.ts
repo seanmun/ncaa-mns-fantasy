@@ -206,21 +206,45 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
     // Fetch box score for ALL tournament games (don't filter by status)
     console.log(`[${gameSlug}] Fetching stats for game: ${awayName} @ ${homeName} (status: ${scheduleStatus})`);
 
-    // Add small delay to respect API rate limits
-    await new Promise((resolve) => setTimeout(resolve, 1100));
-
     const boxScoreUrl = `${BASE_URL}/games/${gameId}/summary.json?api_key=${apiKey}`;
     console.log(`[${gameSlug}] 📡 Fetching box score: ${boxScoreUrl}`);
 
-    const boxScoreRes = await fetch(boxScoreUrl);
+    // Retry logic for rate limits (429) with exponential backoff
+    let boxScoreRes: Response | null = null;
+    let retries = 0;
+    const maxRetries = 3;
 
-    if (!boxScoreRes.ok) {
-      const errorBody = await boxScoreRes.text().catch(() => 'Unable to read error body');
-      const errMsg = `Box score API failed: ${awayName}@${homeName} - HTTP ${boxScoreRes.status}`;
+    while (retries <= maxRetries) {
+      if (retries > 0) {
+        const waitTime = Math.pow(2, retries) * 2000; // 2s, 4s, 8s
+        console.log(`[${gameSlug}] ⏳ Rate limited (429), waiting ${waitTime/1000}s before retry ${retries}/${maxRetries}...`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      } else {
+        // Normal delay on first attempt
+        await new Promise((resolve) => setTimeout(resolve, 1100));
+      }
+
+      boxScoreRes = await fetch(boxScoreUrl);
+
+      if (boxScoreRes.status === 429 && retries < maxRetries) {
+        retries++;
+        continue;
+      }
+
+      break;
+    }
+
+    if (!boxScoreRes || !boxScoreRes.ok) {
+      const errorBody = await boxScoreRes?.text().catch(() => 'Unable to read error body') || 'No response';
+      const status = boxScoreRes?.status || 'No status';
+      const errMsg = `Box score API failed: ${awayName}@${homeName} - HTTP ${status}${status === 429 ? ' (RATE LIMITED - Upgrade from trial tier or wait)' : ''}`;
       errors.push(errMsg);
       console.error(`[${gameSlug}] ❌ ${errMsg}`);
       console.error(`[${gameSlug}] 📋 Error response: ${errorBody}`);
       console.error(`[${gameSlug}] 🔗 Failed URL: ${boxScoreUrl}`);
+      if (status === 429) {
+        console.error(`[${gameSlug}] 💡 TRIAL TIER RATE LIMIT HIT - Either wait 1+ hours or upgrade to production tier`);
+      }
       continue;
     }
 
