@@ -297,7 +297,8 @@ async function syncForGame(gameSlug: string, apiKey: string, dateParam: string, 
 
         const stats = playerData.statistics || {};
         const pts = stats.points || 0;
-        const reb = (stats.rebounds || 0) + (stats.offensive_rebounds || 0) + (stats.defensive_rebounds || 0);
+        // rebounds already includes offensive + defensive, don't double count
+        const reb = stats.rebounds || 0;
         const ast = stats.assists || 0;
 
         // Find matching player in our DB by SportsRadar ID + game
