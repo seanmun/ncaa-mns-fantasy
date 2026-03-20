@@ -302,6 +302,8 @@ export default function AdminPanel() {
   });
 
   // Email Blast
+  const [manualEmails, setManualEmails] = useState('');
+
   const emailBlastMutation = useMutation({
     mutationFn: () =>
       apiFetch('/api/email/morning-update', { method: 'POST' }),
@@ -326,6 +328,19 @@ export default function AdminPanel() {
     },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to send test email');
+    },
+  });
+
+  // Manual Email Send (to specific addresses)
+  const manualEmailMutation = useMutation({
+    mutationFn: (emails: string) =>
+      apiFetch(`/api/email/morning-update?emails=${encodeURIComponent(emails)}`, { method: 'POST' }),
+    onSuccess: (data: { emailsSent: number; debug?: Record<string, unknown> }) => {
+      toast.success(`✅ Sent ${data.emailsSent} email${data.emailsSent !== 1 ? 's' : ''}`);
+      setManualEmails(''); // Clear input on success
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to send manual emails');
     },
   });
 
@@ -618,27 +633,64 @@ export default function AdminPanel() {
 
         {/* Email Blast */}
         <SectionCard title="Email Blast" icon={Mail} delay={0.25}>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => emailTestMutation.mutate()}
-              loading={emailTestMutation.isPending}
-              className="w-full sm:w-auto"
-            >
-              <Mail className="h-4 w-4" />
-              Send Test to Me
-            </Button>
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => emailBlastMutation.mutate()}
-              loading={emailBlastMutation.isPending}
-              className="w-full sm:w-auto"
-            >
-              <Mail className="h-4 w-4" />
-              Send to All Leagues
-            </Button>
+          <div className="space-y-4">
+            {/* Quick Actions */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => emailTestMutation.mutate()}
+                loading={emailTestMutation.isPending}
+                className="w-full sm:w-auto"
+              >
+                <Mail className="h-4 w-4" />
+                Send Test to Me
+              </Button>
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => emailBlastMutation.mutate()}
+                loading={emailBlastMutation.isPending}
+                className="w-full sm:w-auto"
+              >
+                <Mail className="h-4 w-4" />
+                Send to All Leagues
+              </Button>
+            </div>
+
+            {/* Manual Email Input */}
+            <div className="border-t border-bg-border pt-4">
+              <label className="block text-sm font-medium text-text-primary mb-2">
+                Send to Specific Emails
+                <span className="ml-2 text-xs text-text-muted font-normal">
+                  (bypasses preferences)
+                </span>
+              </label>
+              <textarea
+                value={manualEmails}
+                onChange={(e) => setManualEmails(e.target.value)}
+                placeholder="Enter email addresses separated by commas&#10;Example: user1@email.com, user2@email.com, user3@email.com"
+                className="w-full px-4 py-3 rounded-lg bg-bg-primary border border-bg-border text-text-primary placeholder:text-text-muted focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan focus:outline-none transition-colors resize-none font-mono text-sm"
+                rows={3}
+              />
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-xs text-text-muted">
+                  {manualEmails.trim() ?
+                    `${manualEmails.split(',').filter(e => e.trim()).length} email${manualEmails.split(',').filter(e => e.trim()).length !== 1 ? 's' : ''}`
+                    : 'No emails entered'}
+                </span>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => manualEmailMutation.mutate(manualEmails.trim())}
+                  loading={manualEmailMutation.isPending}
+                  disabled={!manualEmails.trim()}
+                >
+                  <Mail className="h-4 w-4" />
+                  Send to Selected
+                </Button>
+              </div>
+            </div>
           </div>
         </SectionCard>
 
