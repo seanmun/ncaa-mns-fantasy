@@ -9,14 +9,14 @@ export default function Header() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-bg-secondary border-b border-bg-border">
-      <div className="max-w-7xl mx-auto h-full px-4 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
         {/* Left: Logo + back link */}
         <div className="flex items-center gap-3">
           <Link
             to="/dashboard"
             className="font-display text-2xl tracking-wide hover:animate-glow transition-all focus-visible:outline-2 focus-visible:outline-neon-cyan focus-visible:outline-offset-2"
           >
-            <span className="text-white">MNS</span><span className="text-neon-green">fantasy</span>
+            <span className="text-white">MNS</span><span className="text-neon-green">ncaa</span>
           </Link>
           <a
             href={getPlatformUrl()}

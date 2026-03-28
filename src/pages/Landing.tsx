@@ -116,7 +116,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto h-full px-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="font-display text-2xl tracking-wide">
-              <span className="text-white">MNS</span><span className="text-neon-green">fantasy</span>
+              <span className="text-white">MNS</span><span className="text-neon-green">ncaa</span>
             </span>
             <a
               href={getPlatformUrl()}
