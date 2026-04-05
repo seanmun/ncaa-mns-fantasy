@@ -132,6 +132,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
       .orderBy(sql`total_score DESC`);
 
+    // Fetch per-game stats for all roster players
+    const playerIds = rosterPlayers.map((p) => p.playerId);
+    const allStats = playerIds.length > 0
+      ? await db
+          .select()
+          .from(playerTournamentStats)
+          .where(sql`${playerTournamentStats.playerId} IN (${sql.join(playerIds.map(id => sql`${id}`), sql`, `)})`)
+          .orderBy(playerTournamentStats.gameDate)
+      : [];
+
+    // Group stats by player ID
+    const statsByPlayer: Record<string, typeof allStats> = {};
+    for (const s of allStats) {
+      if (!statsByPlayer[s.playerId]) statsByPlayer[s.playerId] = [];
+      statsByPlayer[s.playerId].push(s);
+    }
+
     // Reshape into the format the frontend expects (PlayerWithStats with nested team)
     const shapedPlayers = rosterPlayers.map((p) => ({
       id: p.playerId,
@@ -157,7 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sportRadarTeamId: null,
         createdAt: new Date().toISOString(),
       },
-      tournamentStats: [],
+      tournamentStats: statsByPlayer[p.playerId] || [],
       totalPts: Number(p.totalPts),
       totalReb: Number(p.totalReb),
       totalAst: Number(p.totalAst),
