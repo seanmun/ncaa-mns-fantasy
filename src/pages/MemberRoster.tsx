@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@clerk/clerk-react';
-import { Pencil } from 'lucide-react';
+import { Pencil, ChevronDown, ChevronUp } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import PageTransition from '@/components/layout/PageTransition';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { SEED_TIERS } from '@/types';
-import type { PlayerWithStats } from '@/types';
+import type { PlayerWithStats, PlayerTournamentStat } from '@/types';
 import { cn, formatScore, isRosterLocked } from '@/lib/utils';
 import BracketView from '@/components/bracket/BracketView';
 
@@ -26,6 +26,16 @@ interface MemberRosterData {
 }
 
 type Tab = 'roster' | 'bracket';
+
+const ROUND_LABELS: Record<string, string> = {
+  play_in: 'Play-In',
+  round_of_64: 'R64',
+  round_of_32: 'R32',
+  sweet_16: 'Sweet 16',
+  elite_8: 'Elite 8',
+  final_four: 'Final Four',
+  championship: 'Championship',
+};
 
 /* ------------------------------------------------------------------ */
 /*  Tier labels                                                        */
@@ -75,6 +85,7 @@ export default function MemberRoster() {
   const { apiFetch } = useApi();
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState<Tab>('roster');
+  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const locked = isRosterLocked();
 
   /* ---------- Fetch roster ---------- */
@@ -208,52 +219,111 @@ export default function MemberRoster() {
                         {tierPlayers.map((player) => {
                           const eliminated = player.team.isEliminated;
                           const injured = !player.isActive;
+                          const isExpanded = expandedPlayer === player.id;
+                          const stats = (player.tournamentStats || [])
+                            .slice()
+                            .sort((a: PlayerTournamentStat, b: PlayerTournamentStat) =>
+                              new Date(a.gameDate || 0).getTime() - new Date(b.gameDate || 0).getTime()
+                            );
+
                           return (
                             <div
                               key={player.id}
                               className={cn(
-                                'py-2.5 px-2',
                                 (eliminated || injured) && 'opacity-40',
                               )}
                             >
-                              {/* Row 1: Name + badges */}
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className={cn(
-                                    'text-sm font-semibold text-text-primary',
-                                    (eliminated || injured) && 'line-through',
+                              {/* Clickable row */}
+                              <button
+                                type="button"
+                                onClick={() => setExpandedPlayer(isExpanded ? null : player.id)}
+                                className="w-full text-left py-2.5 px-2 hover:bg-bg-card/50 transition-colors rounded"
+                              >
+                                {/* Row 1: Name + badges */}
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className={cn(
+                                      'text-sm font-semibold text-text-primary',
+                                      (eliminated || injured) && 'line-through',
+                                    )}
+                                  >
+                                    {player.name}
+                                  </span>
+                                  {eliminated && (
+                                    <span className="shrink-0 rounded-full bg-neon-red/15 px-1.5 py-0.5 text-[10px] font-semibold text-neon-red">
+                                      OUT
+                                    </span>
                                   )}
-                                >
-                                  {player.name}
-                                </span>
-                                {eliminated && (
-                                  <span className="shrink-0 rounded-full bg-neon-red/15 px-1.5 py-0.5 text-[10px] font-semibold text-neon-red">
-                                    OUT
-                                  </span>
-                                )}
-                                {injured && (
-                                  <span className="shrink-0 rounded-full bg-neon-orange/15 px-1.5 py-0.5 text-[10px] font-semibold text-neon-orange">
-                                    INJ
-                                  </span>
-                                )}
-                              </div>
+                                  {injured && (
+                                    <span className="shrink-0 rounded-full bg-neon-orange/15 px-1.5 py-0.5 text-[10px] font-semibold text-neon-orange">
+                                      INJ
+                                    </span>
+                                  )}
+                                  {isExpanded ? (
+                                    <ChevronUp className="h-3.5 w-3.5 text-text-muted ml-auto" />
+                                  ) : (
+                                    <ChevronDown className="h-3.5 w-3.5 text-text-muted ml-auto" />
+                                  )}
+                                </div>
 
-                              {/* Row 2: Team info + stats */}
-                              <div className="flex items-center justify-between mt-1">
-                                <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
-                                  <span>({player.team.seed}) {player.team.shortName}</span>
-                                  {player.jersey && (
-                                    <span className="font-mono">#{player.jersey}</span>
-                                  )}
-                                  <span className="hidden sm:inline">{player.team.region}</span>
+                                {/* Row 2: Team info + stats */}
+                                <div className="flex items-center justify-between mt-1">
+                                  <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                                    <span>({player.team.seed}) {player.team.shortName}</span>
+                                    {player.jersey && (
+                                      <span className="font-mono">#{player.jersey}</span>
+                                    )}
+                                    <span className="hidden sm:inline">{player.team.region}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3 font-mono text-xs">
+                                    <span className="text-text-secondary">{player.totalPts}</span>
+                                    <span className="text-text-secondary">{player.totalReb}</span>
+                                    <span className="text-text-secondary">{player.totalAst}</span>
+                                    <span className="font-bold text-neon-green">{player.totalScore}</span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-3 font-mono text-xs">
-                                  <span className="text-text-secondary">{player.totalPts}</span>
-                                  <span className="text-text-secondary">{player.totalReb}</span>
-                                  <span className="text-text-secondary">{player.totalAst}</span>
-                                  <span className="font-bold text-neon-green">{player.totalScore}</span>
+                              </button>
+
+                              {/* Expanded game stats */}
+                              {isExpanded && stats.length > 0 && (
+                                <div className="px-2 pb-3 pt-1">
+                                  <div className="rounded-lg bg-bg-secondary border border-bg-border overflow-hidden">
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr className="border-b border-bg-border">
+                                          <th className="text-left px-3 py-1.5 font-normal text-text-muted">Round</th>
+                                          <th className="text-center px-2 py-1.5 font-normal text-text-muted">PTS</th>
+                                          <th className="text-center px-2 py-1.5 font-normal text-text-muted">REB</th>
+                                          <th className="text-center px-2 py-1.5 font-normal text-text-muted">AST</th>
+                                          <th className="text-center px-2 py-1.5 font-normal text-text-muted">TOT</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {stats.map((s: PlayerTournamentStat) => (
+                                          <tr key={s.id} className="border-b border-bg-border/50 last:border-0">
+                                            <td className="px-3 py-1.5 text-text-secondary">
+                                              {ROUND_LABELS[s.round] || s.round}
+                                            </td>
+                                            <td className="text-center px-2 py-1.5 font-mono text-text-secondary">{s.pts}</td>
+                                            <td className="text-center px-2 py-1.5 font-mono text-text-secondary">{s.reb}</td>
+                                            <td className="text-center px-2 py-1.5 font-mono text-text-secondary">{s.ast}</td>
+                                            <td className="text-center px-2 py-1.5 font-mono font-bold text-neon-green">
+                                              {(s.pts || 0) + (s.reb || 0) + (s.ast || 0)}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
                                 </div>
-                              </div>
+                              )}
+                              {isExpanded && stats.length === 0 && (
+                                <div className="px-2 pb-3 pt-1">
+                                  <p className="text-xs text-text-muted px-3 py-2 rounded-lg bg-bg-secondary border border-bg-border">
+                                    No game stats recorded yet.
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
