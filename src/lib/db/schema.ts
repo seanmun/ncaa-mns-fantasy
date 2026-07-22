@@ -14,19 +14,7 @@ import {
 // cross-game tables (users, marketing_*, email_log) stay in `public`.
 export const ncaaSchema = pgSchema('ncaa');
 
-// Enums (ncaa-specific, live in the ncaa schema)
-export const leagueVisibilityEnum = ncaaSchema.enum('league_visibility', [
-  'public',
-  'private',
-]);
-export const tournamentRoundEnum = ncaaSchema.enum('tournament_round', [
-  'round_of_64',
-  'round_of_32',
-  'sweet_16',
-  'elite_8',
-  'final_four',
-  'championship',
-]);
+export type LeagueVisibility = 'public' | 'private';
 
 // PLATFORM PATTERN — Users (mirrors Clerk, minimal local data).
 // Shared cross-game. email is NOT unique in the live table; role and
@@ -104,7 +92,9 @@ export const leagues = ncaaSchema.table('leagues', {
   adminId: text('admin_id')
     .references(() => users.id)
     .notNull(),
-  visibility: leagueVisibilityEnum('visibility')
+  // Plain text in the live DB (the enum type was never actually created).
+  visibility: text('visibility')
+    .$type<LeagueVisibility>()
     .default('private')
     .notNull(),
   buyInAmount: decimal('buy_in_amount', { precision: 10, scale: 2 }).default(
