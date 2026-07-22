@@ -1,21 +1,25 @@
 import {
   pgTable,
+  pgSchema,
   text,
   integer,
   boolean,
   timestamp,
   uuid,
   decimal,
-  pgEnum,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
-// Enums
-export const leagueVisibilityEnum = pgEnum('league_visibility', [
+// All NCAA game tables live in the `ncaa` Postgres schema. Shared
+// cross-game tables (users, marketing_*, email_log) stay in `public`.
+export const ncaaSchema = pgSchema('ncaa');
+
+// Enums (ncaa-specific, live in the ncaa schema)
+export const leagueVisibilityEnum = ncaaSchema.enum('league_visibility', [
   'public',
   'private',
 ]);
-export const tournamentRoundEnum = pgEnum('tournament_round', [
+export const tournamentRoundEnum = ncaaSchema.enum('tournament_round', [
   'round_of_64',
   'round_of_32',
   'sweet_16',
@@ -24,17 +28,21 @@ export const tournamentRoundEnum = pgEnum('tournament_round', [
   'championship',
 ]);
 
-// PLATFORM PATTERN — Users (mirrors Clerk, minimal local data)
+// PLATFORM PATTERN — Users (mirrors Clerk, minimal local data).
+// Shared cross-game. email is NOT unique in the live table; role and
+// updated_at were added by wnba-mns-fantasy.
 export const users = pgTable('users', {
   id: text('id').primaryKey(), // Clerk user ID
-  email: text('email').notNull().unique(),
+  email: text('email').notNull(),
   displayName: text('display_name').notNull(),
   avatarUrl: text('avatar_url'),
+  role: text('role').notNull().default('owner'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // NCAA Tournament Teams
-export const ncaaTeams = pgTable('ncaa_teams', {
+export const ncaaTeams = ncaaSchema.table('teams', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   shortName: text('short_name').notNull(),
@@ -49,7 +57,7 @@ export const ncaaTeams = pgTable('ncaa_teams', {
 });
 
 // Players
-export const players = pgTable('players', {
+export const players = ncaaSchema.table('players', {
   id: uuid('id').primaryKey().defaultRandom(),
   teamId: uuid('team_id')
     .references(() => ncaaTeams.id)
@@ -73,7 +81,7 @@ export const players = pgTable('players', {
 });
 
 // Tournament game stats (accumulated)
-export const playerTournamentStats = pgTable('player_tournament_stats', {
+export const playerTournamentStats = ncaaSchema.table('player_tournament_stats', {
   id: uuid('id').primaryKey().defaultRandom(),
   playerId: uuid('player_id')
     .references(() => players.id)
@@ -90,7 +98,7 @@ export const playerTournamentStats = pgTable('player_tournament_stats', {
 });
 
 // PLATFORM PATTERN — Leagues (reuse in future game apps)
-export const leagues = pgTable('leagues', {
+export const leagues = ncaaSchema.table('leagues', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   adminId: text('admin_id')
@@ -114,7 +122,7 @@ export const leagues = pgTable('leagues', {
 });
 
 // PLATFORM PATTERN — League Members (reuse in future game apps)
-export const leagueMembers = pgTable('league_members', {
+export const leagueMembers = ncaaSchema.table('league_members', {
   id: uuid('id').primaryKey().defaultRandom(),
   leagueId: uuid('league_id')
     .references(() => leagues.id)
@@ -128,7 +136,7 @@ export const leagueMembers = pgTable('league_members', {
 });
 
 // Rosters (junction: league member → players)
-export const rosters = pgTable('rosters', {
+export const rosters = ncaaSchema.table('rosters', {
   id: uuid('id').primaryKey().defaultRandom(),
   memberId: uuid('member_id')
     .references(() => leagueMembers.id)
@@ -153,7 +161,7 @@ export const emailLog = pgTable('email_log', {
 });
 
 // Active games (live scores from SportsRadar, populated by manual sync)
-export const activeGames = pgTable('active_games', {
+export const activeGames = ncaaSchema.table('active_games', {
   id: uuid('id').primaryKey().defaultRandom(),
   srGameId: text('sr_game_id').notNull().unique(),
   homeTeamName: text('home_team_name').notNull(),
