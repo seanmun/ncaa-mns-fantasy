@@ -168,9 +168,9 @@ export const activeGames = ncaaSchema.table('active_games', {
 // Global marketing opt-in (one row per user, set at first login on ANY subdomain)
 export const marketingSubscribers = pgTable('marketing_subscribers', {
   id: uuid('id').primaryKey().defaultRandom(),
+  // Nullable since 2026-07-22: hub landing-page signups are anonymous.
   userId: text('user_id')
     .references(() => users.id)
-    .notNull()
     .unique(),
   email: text('email').notNull(),
   globalOptIn: boolean('global_opt_in').default(false).notNull(),
