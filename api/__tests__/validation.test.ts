@@ -18,6 +18,7 @@ import {
 describe('createLeagueSchema', () => {
   it('accepts valid league creation body', () => {
     const result = createLeagueSchema.safeParse({
+      gameSlug: 'ncaa-mens-2026',
       name: 'My League',
       teamName: 'Hoops Squad',
       visibility: 'private',
@@ -28,6 +29,7 @@ describe('createLeagueSchema', () => {
 
   it('applies defaults for optional fields', () => {
     const result = createLeagueSchema.safeParse({
+      gameSlug: 'ncaa-mens-2026',
       name: 'League',
       teamName: 'Team',
     });
@@ -58,6 +60,7 @@ describe('createLeagueSchema', () => {
 
   it('trims whitespace from name and teamName', () => {
     const result = createLeagueSchema.safeParse({
+      gameSlug: 'ncaa-mens-2026',
       name: '  My League  ',
       teamName: '  My Team  ',
     });
@@ -70,6 +73,7 @@ describe('createLeagueSchema', () => {
 
   it('coerces buyInAmount to string', () => {
     const result = createLeagueSchema.safeParse({
+      gameSlug: 'ncaa-mens-2026',
       name: 'League',
       teamName: 'Team',
       buyInAmount: 25,
@@ -98,6 +102,7 @@ describe('createLeagueSchema', () => {
 
   it('transforms null cryptoWalletAddress to null', () => {
     const result = createLeagueSchema.safeParse({
+      gameSlug: 'ncaa-mens-2026',
       name: 'League',
       teamName: 'Team',
       cryptoWalletAddress: '',
