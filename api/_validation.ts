@@ -150,10 +150,13 @@ export const marketingSubscribeSchema = z.object({
 
 // --- Helper: parse & respond ---
 
-export function parseBody<T>(
-  schema: z.ZodSchema<T>,
+// Generic over the schema, not its output: z.ZodSchema<T> pins input and
+// output to the same type, which no schema using .default() or
+// .transform() satisfies. Call sites still infer data correctly.
+export function parseBody<S extends z.ZodTypeAny>(
+  schema: S,
   body: unknown
-): { success: true; data: T } | { success: false; error: string } {
+): { success: true; data: z.infer<S> } | { success: false; error: string } {
   const result = schema.safeParse(body);
   if (!result.success) {
     const firstError = result.error.issues[0];

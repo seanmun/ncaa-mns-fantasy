@@ -33,6 +33,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { playerName, playerId, reactivate } = parsed.data;
 
+    // Both are optional in the schema, so a body with neither used to
+    // reach the DB as ilike(name, undefined) and 500.
+    if (!playerId && !playerName) {
+      return res.status(400).json({ error: 'playerId or playerName is required' });
+    }
+
     // Find player by ID or name (case-insensitive)
     const [player] = await db
       .select()
@@ -40,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .where(
         playerId
           ? eq(players.id, playerId)
-          : ilike(players.name, playerName)
+          : ilike(players.name, playerName!)
       )
       .limit(1);
 
