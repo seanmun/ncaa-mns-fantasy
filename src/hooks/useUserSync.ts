@@ -22,10 +22,10 @@ export function useUserSync() {
           },
           body: JSON.stringify({
             email: user.primaryEmailAddress?.emailAddress || '',
+            // Handle, never legal name — platform privacy rule.
             displayName:
-              user.fullName ||
               user.username ||
-              user.primaryEmailAddress?.emailAddress ||
+              user.primaryEmailAddress?.emailAddress?.split('@')[0] ||
               'Player',
             avatarUrl: user.imageUrl || null,
           }),
