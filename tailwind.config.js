@@ -1,15 +1,16 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-  // Dark mode only — no theme switching
   theme: {
     extend: {
       colors: {
-        'neon-green': '#00ff87',
-        'neon-cyan': '#00e5ff',
-        'neon-purple': '#bf5af2',
-        'neon-orange': '#ff9f0a',
-        'neon-red': '#ff453a',
+        // RGB-triplet vars so opacity modifiers (bg-neon-red/5) work
+        // and both themes flow through — values live in index.css.
+        'neon-green': 'rgb(var(--neon-green-rgb) / <alpha-value>)',
+        'neon-cyan': 'rgb(var(--neon-cyan-rgb) / <alpha-value>)',
+        'neon-purple': 'rgb(var(--neon-purple-rgb) / <alpha-value>)',
+        'neon-orange': 'rgb(var(--neon-orange-rgb) / <alpha-value>)',
+        'neon-red': 'rgb(var(--neon-red-rgb) / <alpha-value>)',
         'bg-primary': 'var(--bg-primary)',
         'bg-secondary': 'var(--bg-secondary)',
         'bg-card': 'var(--bg-card)',

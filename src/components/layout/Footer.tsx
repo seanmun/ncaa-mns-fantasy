@@ -9,11 +9,11 @@ export default function Footer() {
           {' '}&mdash; NCAA Tournament 2026
         </p>
         <nav className="flex flex-wrap items-center justify-center gap-1 text-xs text-[var(--color-muted-foreground)] mb-4">
-          <a href="https://mnsfantasy.com" className="hover:text-white transition-colors">
+          <a href="https://mnsfantasy.com" className="hover:text-text-primary transition-colors">
             Home
           </a>
           <span>&middot;</span>
-          <a href="https://mnsfantasy.com/privacy" className="hover:text-white transition-colors">
+          <a href="https://mnsfantasy.com/privacy" className="hover:text-text-primary transition-colors">
             Privacy
           </a>
         </nav>
@@ -23,7 +23,7 @@ export default function Footer() {
             href="https://www.seanmun.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-white transition-colors"
+            className="hover:text-text-primary transition-colors"
           >
             Sean Munley
           </a>

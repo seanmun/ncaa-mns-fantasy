@@ -3,6 +3,7 @@ import { UserButton } from '@clerk/clerk-react';
 import { ChevronLeft, Home, Shield, Settings } from 'lucide-react';
 import { getPlatformUrl } from '@/lib/utils';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
+import { ThemeToggle } from '@/ui/components';
 
 export default function Header() {
   const isAdmin = useAdminCheck();
@@ -16,7 +17,7 @@ export default function Header() {
             to="/dashboard"
             className="font-display text-2xl tracking-wide hover:animate-glow transition-all focus-visible:outline-2 focus-visible:outline-neon-cyan focus-visible:outline-offset-2"
           >
-            <span className="text-white">MNS</span><span className="text-neon-green">ncaa</span>
+            <span className="text-text-primary">MNS</span><span className="text-neon-green">ncaa</span>
           </Link>
           <a
             href={getPlatformUrl()}
@@ -54,8 +55,9 @@ export default function Header() {
           )}
         </nav>
 
-        {/* Right: User button */}
-        <div className="flex items-center">
+        {/* Right: theme + user button */}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
           <UserButton
             afterSignOutUrl="/"
             appearance={{

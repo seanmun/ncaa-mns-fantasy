@@ -7,7 +7,12 @@ import { Toaster } from 'sonner';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import { CLERK_PUBLISHABLE_KEY } from './lib/clerk';
+import { initTheme } from './ui/theme';
 import './index.css';
+
+// Stamp the remembered theme before React mounts — after would flash
+// the wrong palette on every load for anyone who has toggled.
+initTheme();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,7 +39,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <App />
           <Toaster
             position="top-right"
-            theme="dark"
             toastOptions={{
               style: {
                 background: 'var(--bg-card)',
