@@ -1,5 +1,6 @@
 // Quick script to fetch a game summary and inspect the statistics structure
-const API_KEY = process.env.SPORTSRADAR_API_KEY || '9Mq175DOMaD6aOY5AhvXoPAdR87n1rr4wdPK7ZsG';
+const API_KEY = process.env.SPORTSRADAR_API_KEY
+if (!API_KEY) throw new Error('Set SPORTSRADAR_API_KEY in the environment.');
 const BASE_URL = 'https://api.sportradar.com/ncaamb/trial/v8/en';
 
 // Use a recent game ID - let's fetch today's schedule first

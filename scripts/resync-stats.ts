@@ -1,5 +1,6 @@
 // Re-sync stats by calling the API endpoint
-const CRON_SECRET = process.env.CRON_SECRET || '34c53b6a6a159a4a237c91931a37228fbb1c3de362273927b1efc25d023d0c79';
+const CRON_SECRET = process.env.CRON_SECRET
+if (!CRON_SECRET) throw new Error('Set CRON_SECRET in the environment.');
 const API_URL = process.env.API_URL || 'http://localhost:3000';
 
 async function resyncStats(date: string) {
