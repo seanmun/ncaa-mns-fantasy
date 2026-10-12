@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 
-const DATABASE_URL = 'postgresql://neondb_owner:npg_iC1pkSLNamf6@ep-summer-cake-adecx91b-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const DATABASE_URL = process.env.DATABASE_URL; // never hard-code a connection string
+if (!DATABASE_URL) throw new Error('DATABASE_URL is not set')
 const sql = neon(DATABASE_URL);
 
 console.log('Checking player data...\n');
